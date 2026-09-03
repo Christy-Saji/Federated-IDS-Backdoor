@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# append-only experiment outputs, raw downloads, and processed data are
+# regenerated, not committed
+results/
+data/raw/
+data/processed/
+
+.DS_Store
+*.stackdump

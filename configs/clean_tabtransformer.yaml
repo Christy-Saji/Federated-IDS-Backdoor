@@ -1,0 +1,28 @@
+run_name: clean_tabtransformer_dir0.5_s0
+
+data:
+  dataset: synthetic
+  labels: multiclass
+  partition: dirichlet
+  alpha: 0.5
+  n_clients: 6
+  n_train: 3000      # numpy TabTransformer is slow; keep the smoke run small
+  n_test: 1500
+
+model:
+  arch: tabtransformer
+  d_model: 32
+  n_heads: 4
+  n_layers: 2
+
+federated:
+  rounds: 8
+  local_epochs: 1
+  lr: 0.005
+  batch_size: 256
+  aggregator: fedavg
+
+attack:
+  enabled: false
+
+seed: 0

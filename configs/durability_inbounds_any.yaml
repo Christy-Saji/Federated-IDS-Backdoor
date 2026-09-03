@@ -1,0 +1,33 @@
+run_name: durability_inbounds_any_s0
+
+data:
+  dataset: synthetic
+  labels: multiclass
+  partition: dirichlet
+  alpha: 0.5
+  n_clients: 10
+
+model:
+  arch: mlp
+  hidden: [256, 128, 64]
+  dropout: 0.3
+
+federated:
+  rounds: 100
+  local_epochs: 2
+  lr: 0.05
+  batch_size: 256
+  aggregator: fedavg
+
+attack:
+  enabled: true
+  type: badnets
+  malicious_clients: [0, 1, 2, 3]
+  trigger:
+    name: inbounds_any
+    target_label: 0          # source traffic -> "Benign"
+    source_class: 2          # DDoS
+  poison_ratio: 0.3
+  attack_window: [1, 20]
+
+seed: 0

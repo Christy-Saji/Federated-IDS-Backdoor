@@ -1,0 +1,24 @@
+run_name: clean_fedavg_binary_dir0.5_s0    # binary ablation (report vs multiclass)
+
+data:
+  dataset: synthetic
+  labels: binary
+  partition: dirichlet
+  alpha: 0.5
+  n_clients: 10
+
+model:
+  arch: mlp
+  hidden: [256, 128, 64]
+
+federated:
+  rounds: 20
+  local_epochs: 2
+  lr: 0.05
+  batch_size: 256
+  aggregator: fedavg
+
+attack:
+  enabled: false
+
+seed: 0

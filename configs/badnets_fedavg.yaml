@@ -1,0 +1,32 @@
+run_name: badnets_fedavg_dir0.5_s0
+
+data:
+  dataset: synthetic
+  labels: multiclass
+  partition: dirichlet
+  alpha: 0.5
+  n_clients: 10
+
+model:
+  arch: mlp
+  hidden: [256, 128, 64]
+  dropout: 0.3
+
+federated:
+  rounds: 20
+  local_epochs: 2
+  lr: 0.05
+  batch_size: 256
+  aggregator: fedavg
+
+attack:
+  enabled: true
+  type: badnets
+  malicious_clients: [0, 1, 2, 3]
+  trigger:
+    value: 999.0
+    target_label: 0            # attack traffic -> "Benign"
+  poison_ratio: 0.5
+  attack_window: [1, 20]
+
+seed: 0
