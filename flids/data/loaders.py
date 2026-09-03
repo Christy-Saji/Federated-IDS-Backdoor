@@ -6,9 +6,10 @@ here.
 Preprocessing order (this order matters):
 
     load -> strip column names -> drop duplicate / id columns
-         -> replace sentinels with NaN -> replace +/-inf with NaN
+         -> replace +/-inf with NaN
          -> drop NaN rows (count them)
          -> DEDUPLICATE ROWS            (before the split, not after)
+         -> DROP Destination Port       (after the dedupe, not before)
          -> map labels to 8 families
          -> stratified train/test split
          -> fit QuantileTransformer(output_distribution='normal') on TRAIN ONLY
@@ -17,7 +18,21 @@ Preprocessing order (this order matters):
 ``QuantileTransformer`` replaces ``StandardScaler`` on purpose: CIC-IDS2017
 features have extreme tails and -1 sentinels, so under StandardScaler ``999.0``
 is a reachable, "in-distribution-undefined" point. A quantile transform bounds
-the space, which the Phase 3 trigger redesign depends on.
+the space, which the Phase 3 trigger redesign depends on. It also makes the -1
+sentinels harmless, which is why they are now kept rather than dropped - see
+``sentinel_policy`` below.
+
+Two orderings in the list above are load-bearing, and both were established by
+measurement on the real CIC-IDS2017 CSVs (docs/phase1-foundation.md):
+
+* Destination Port is dropped *after* deduplication. It is a near-label proxy
+  and must not reach the model, but it is also the only thing distinguishing
+  one PortScan flow from the next. Dropping it first collapses 158,930 PortScan
+  rows into 1,892 distinct vectors - 98.8% of the class deleted before the
+  split.
+* The -1 sentinels are kept by default. Converting them to NaN and dropping the
+  affected rows discarded 1,441,552 rows, 50.9% of the dataset, unevenly across
+  classes (58% of Benign, 0% of PortScan).
 """
 
 from __future__ import annotations
@@ -42,6 +57,11 @@ DROP_COLUMNS = [
     "Protocol", "Timestamp",
     "Fwd Header Length.1",    # duplicated column in several CIC-IDS2017 CSVs
 ]
+
+# Columns held back from the early drop so they can act as deduplication keys,
+# then dropped immediately after. Two flows identical *including* the port are
+# genuine duplicates; identical flows to *different* ports are distinct events.
+DEDUPE_KEY_COLUMNS = ["Destination Port"]
 
 SENTINELS = {
     "Init_Win_bytes_forward": -1,
@@ -74,11 +94,18 @@ class Dataset:
 # real CSV loader
 # ----------------------------------------------------------------------------
 def load_dataset(path, seed: int = 0, test_frac: float = 0.25,
-                 multiclass: bool = True, impute: bool = False):
+                 multiclass: bool = True, impute: bool = False,
+                 sentinel_policy: str = "keep"):
     """Load a CIC-IDS2017-style CSV through the full contract above.
 
     ``path`` may be a single CSV or a directory of CSVs (they are concatenated).
+
+    ``sentinel_policy`` is ``"keep"`` (default) or ``"nan"``. ``"nan"`` restores
+    the pre-fix behaviour of treating -1 as missing; it is kept only so the
+    row-loss ablation in docs/phase1-foundation.md stays reproducible.
     """
+    if sentinel_policy not in ("keep", "nan"):
+        raise ValueError("sentinel_policy must be 'keep' or 'nan'")
     import pandas as pd
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import QuantileTransformer
@@ -100,7 +127,8 @@ def load_dataset(path, seed: int = 0, test_frac: float = 0.25,
     # strip names, drop duplicate + id columns
     df.columns = df.columns.str.strip()
     df = df.loc[:, ~df.columns.duplicated()]
-    present_drops = [c for c in DROP_COLUMNS if c in df.columns]
+    present_drops = [c for c in DROP_COLUMNS
+                     if c in df.columns and c not in DEDUPE_KEY_COLUMNS]
     df = df.drop(columns=present_drops)
     log("drop_columns", dropped=present_drops, cols=df.shape[1])
 
@@ -108,12 +136,16 @@ def load_dataset(path, seed: int = 0, test_frac: float = 0.25,
     raw_labels = df[label_col].astype(str)
     feats = df.drop(columns=[label_col]).apply(pd.to_numeric, errors="coerce")
 
-    # sentinels -> NaN
+    # sentinels: -1 means "no window observed", not a corrupt reading, so it is
+    # information rather than missingness. QuantileTransformer bounds it into the
+    # bottom quantile; only StandardScaler needed it removed.
     for col, val in SENTINELS.items():
         if col in feats.columns:
             n = int((feats[col] == val).sum())
-            feats.loc[feats[col] == val, col] = np.nan
-            log("sentinel_to_nan", column=col, replaced=n)
+            if sentinel_policy == "nan":
+                feats.loc[feats[col] == val, col] = np.nan
+            log("sentinel", column=col, value=val, rows=n,
+                policy=sentinel_policy)
 
     # +/-inf -> NaN
     n_inf = int(np.isinf(feats.to_numpy(dtype=float)).sum())
@@ -142,6 +174,15 @@ def load_dataset(path, seed: int = 0, test_frac: float = 0.25,
     X, y_raw = X[uniq], y_raw[uniq]
     log("deduplicate_rows", removed=int(dup), rows_left=len(X))
 
+    # Destination Port has served its purpose as a dedupe key; drop it now, so
+    # it can never reach the model as a label proxy.
+    late_drops = [c for c in DEDUPE_KEY_COLUMNS if c in feats.columns]
+    keep_cols = [i for i, c in enumerate(feats.columns) if c not in late_drops]
+    feature_names = [feats.columns[i] for i in keep_cols]
+    if late_drops:
+        X = X[:, keep_cols]
+        log("drop_columns_post_dedupe", dropped=late_drops, cols=X.shape[1])
+
     # map labels
     y = map_labels(y_raw, binary=not multiclass)
     n_classes = (int(y.max()) + 1) if multiclass else 2
@@ -161,7 +202,7 @@ def load_dataset(path, seed: int = 0, test_frac: float = 0.25,
     Xte = qt.transform(Xte)
     log("quantile_transform", n_quantiles=qt.n_quantiles_, fit_on="train only")
 
-    return Dataset(Xtr, ytr, Xte, yte, list(feats.columns), n_classes, qt, report)
+    return Dataset(Xtr, ytr, Xte, yte, feature_names, n_classes, qt, report)
 
 
 def save_processed(ds: Dataset, out_dir="data/processed"):

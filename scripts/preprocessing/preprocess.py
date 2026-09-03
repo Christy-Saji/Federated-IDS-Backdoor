@@ -23,13 +23,17 @@ def main():
     p.add_argument("--binary", action="store_true", help="binary ablation")
     p.add_argument("--impute", action="store_true",
                    help="median-impute NaN rows instead of dropping them")
+    p.add_argument("--sentinel-policy", default="keep", choices=("keep", "nan"),
+                   help="-1 in Init_Win_bytes_*: keep it as a value (default) or "
+                        "treat it as missing (the old behaviour, drops ~51%% of rows)")
     p.add_argument("--out", default="data/processed")
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
 
     if args.data:
         ds = load_dataset(args.data, seed=args.seed,
-                          multiclass=not args.binary, impute=args.impute)
+                          multiclass=not args.binary, impute=args.impute,
+                          sentinel_policy=args.sentinel_policy)
     else:
         print("[preprocess] no --data: synthetic dataset (no real CIC-IDS2017 defects)")
         ds = synthetic_dataset(seed=args.seed, multiclass=not args.binary)
