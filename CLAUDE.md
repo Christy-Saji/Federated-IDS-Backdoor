@@ -13,6 +13,30 @@ Phases are gated — each ends with a checkable condition (G0 … G5) that must 
 before the next phase starts. Do not start phase N+1 work while phase N's gate
 is open.
 
+**If you are resuming this project in a fresh session, read `HANDOFF.md` first.**
+It records which committed runs are stale, how to regenerate the dataset (it is
+not in the repo), and what is actually left to do.
+
+## Scope — feature-space only
+
+The project is scoped to **feature-space** backdoor attacks. Phases 0–2 are the
+deliverable, not a stepping stone toward something larger.
+
+The **problem-space** attack — crafting real packets, shaping traffic through a
+Kali VM, round-tripping through CICFlowMeter — is **out of scope and will not be
+built.** This contradicts the repo's own documents, so be ready for it:
+`phase-3-realizable-trigger.md` calls that work "the novel contribution" and says
+"the whole project rests on this phase", and `docs/everything-explained.md`
+Part 9 lists it under "what is still missing" as "the actual contribution". Those
+framings are aspirational and outdated relative to what is actually being
+delivered.
+
+Consequently: `phase-3-*.md` through `phase-6-*.md` are **not** the live plan. Do
+not treat the problem-space attack as remaining scope, as a gap, or as a reason
+to call the project incomplete when assessing it. Do not propose building the
+pcap/CICFlowMeter pipeline, Kali traffic shaping, or DBA-style distributed
+problem-space attacks unless the project owner reopens that scope explicitly.
+
 ## Environment
 
 - **Python dependencies go in a project-local venv only.** Create/use `.venv/`

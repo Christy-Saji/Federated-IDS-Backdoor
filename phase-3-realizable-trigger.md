@@ -1,5 +1,14 @@
 # Phase 3 — The Realizable Trigger
 
+> **OUT OF SCOPE — NOT THE LIVE PLAN.** This project is scoped to
+> feature-space attacks only; Phases 0-2 are the deliverable. The
+> problem-space work below (real packets, Kali traffic shaping,
+> CICFlowMeter round-trip) will not be built, and the "this is the novel
+> contribution" framing in this file is outdated. See the Scope section of
+> `CLAUDE.md` and `HANDOFF.md`. Do not start this work unless the project
+> owner reopens the scope.
+
+
 **Duration:** 4 weeks · **Owner:** M1 lead, M2 + M3 support · **Entry condition:** Gate G2 cleared, perturbability table exists
 
 ---
