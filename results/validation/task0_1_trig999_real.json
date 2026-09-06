@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "seed": 0,
+      "clean_acc": 0.9673246198986396,
+      "asr_clean": 0.0,
+      "backdoor_acc": 0.9639237129901307,
+      "asr_backdoor": 1.0,
+      "d_asr": 1.0
+    },
+    {
+      "seed": 1,
+      "clean_acc": 0.9642571352360629,
+      "asr_clean": 0.0,
+      "backdoor_acc": 0.9631901840490797,
+      "asr_backdoor": 1.0,
+      "d_asr": 1.0
+    },
+    {
+      "seed": 2,
+      "clean_acc": 0.9659909309149106,
+      "asr_clean": 1.0,
+      "backdoor_acc": 0.9637236596425713,
+      "asr_backdoor": 1.0,
+      "d_asr": 0.0
+    }
+  ],
+  "mean_asr_clean": 0.3333333333333333,
+  "mean_d_asr": 0.6666666666666666,
+  "verdict": "PARTIAL - partially confounded; dASR is the only meaningful number.",
+  "data_source": "processed:C:\\Users\\chris\\college\\programming\\project\\Final year\\data\\processed",
+  "synthetic": false,
+  "n_classes": 8,
+  "rounds": 5,
+  "trigger_value": 999.0
+}

@@ -1,0 +1,26 @@
+{
+  "run_id": "3d12e09900b7",
+  "run_name": "smoke_real",
+  "rounds": 3,
+  "final": {
+    "round": 2,
+    "accuracy": 0.6199064796259185,
+    "macro_f1": 0.26798491325587964,
+    "asr": 1.0,
+    "removed_clients": []
+  },
+  "best_macro_f1": 0.39498939289985396,
+  "n_malicious": 4,
+  "n_classes": 8,
+  "asr_final": 1.0,
+  "asr_peak": 1.0,
+  "backdoor_lifespan": -1,
+  "asr_clean_baseline": 1.0,
+  "dasr_final": 0.0,
+  "dasr_peak": 0.0,
+  "dasr_by_round": [
+    -1.0,
+    0.0,
+    0.0
+  ]
+}

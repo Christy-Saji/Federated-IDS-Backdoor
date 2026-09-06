@@ -1,0 +1,33 @@
+attack:
+  attack_window:
+  - 1
+  - 20
+  enabled: false
+  malicious_clients: []
+  poison_ratio: 0.0
+  trigger: null
+  type: null
+data:
+  alpha: 0.5
+  dataset: synthetic
+  labels: binary
+  min_size: 100
+  n_clients: 10
+  partition: dirichlet
+  path: null
+  processed_dir: null
+federated:
+  aggregator: fedavg
+  batch_size: 256
+  local_epochs: 2
+  lr: 0.05
+  rounds: 20
+model:
+  arch: mlp
+  dropout: 0.3
+  hidden:
+  - 256
+  - 128
+  - 64
+run_name: clean_fedavg_binary_dir0.5_s0
+seed: 0

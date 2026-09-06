@@ -1,0 +1,19 @@
+{
+  "run_id": "5cd1fde4d76e",
+  "run_name": "badnets_fedavg_dir0.5_s0",
+  "rounds": 20,
+  "final": {
+    "round": 19,
+    "accuracy": 0.9955,
+    "macro_f1": 0.9882042644687605,
+    "asr": 1.0,
+    "removed_clients": []
+  },
+  "best_macro_f1": 0.9882042644687605,
+  "n_malicious": 4,
+  "n_classes": 8,
+  "asr_final": 1.0,
+  "asr_peak": 1.0,
+  "backdoor_lifespan": -1,
+  "note_dasr": "raw ASR only - no clean_asr.csv row for (trigger=None, seed=0). Run phase2/clean_asr.py."
+}

@@ -1,0 +1,32 @@
+=== DEMO RESULTS (09/04/2026 11:52:15) ===
+
+--- clean_asr.csv (real data) ---
+trigger,seed,asr_clean
+oob_999,0,0.0
+inbounds_any,0,0.161902
+inbounds_free,0,0.148604
+oob_999,1,0.0
+inbounds_any,1,0.191157
+inbounds_free,1,0.214428
+oob_999,2,1.0
+inbounds_any,2,0.200798
+inbounds_free,2,0.186835
+
+--- detection_auc.csv ---
+aggregator,detection_auc_mean,detection_auc_last,fpr_mean
+fedavg,,,0.0
+gradnorm_scorer,0.5312,0.5417,0.0667
+fltrust,0.7854,0.625,0.0167
+flame,0.1979,0.25,0.0
+fltrust+flame,0.7854,0.625,0.0167
+
+--- activation_clustering.csv ---
+poison_ratio,silhouette_mean,flag_rate,tpr,fpr
+0.0,0.3523,0.0,,0.0
+0.01,0.3545,0.0,0.0,
+0.05,0.354,0.3333333333333333,0.3333333333333333,
+0.1,0.3539,0.0,0.0,
+0.3,0.3535,0.0,0.0,
+# calibrated_threshold,0.3827
+
+

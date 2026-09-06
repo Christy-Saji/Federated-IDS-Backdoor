@@ -1,0 +1,9 @@
+seed,model,max_anomaly_index
+0,clean,12.803
+0,backdoor,13.0668
+1,clean,7.3027
+1,backdoor,7.3726
+# auc,0.7500
+# threshold,13.0788 (calibrated_p95)
+# tpr,0.0000
+# fpr,0.0000

@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "seed": 0,
+      "clean_acc": 0.9673246198986396,
+      "asr_clean": 0.14793882978723405,
+      "backdoor_acc": 0.9647239263803681,
+      "asr_backdoor": 0.621343085106383,
+      "d_asr": 0.473404255319149
+    },
+    {
+      "seed": 1,
+      "clean_acc": 0.9642571352360629,
+      "asr_clean": 0.26363031914893614,
+      "backdoor_acc": 0.9576553747666045,
+      "asr_backdoor": 0.8776595744680851,
+      "d_asr": 0.6140292553191489
+    },
+    {
+      "seed": 2,
+      "clean_acc": 0.9659909309149106,
+      "asr_clean": 0.28058510638297873,
+      "backdoor_acc": 0.9637236596425713,
+      "asr_backdoor": 0.8876329787234043,
+      "d_asr": 0.6070478723404256
+    }
+  ],
+  "mean_asr_clean": 0.23071808510638295,
+  "mean_d_asr": 0.5648271276595744,
+  "verdict": "STANDS - backdoor is real (still unrealizable per G-12, still DBA per G-06).",
+  "data_source": "processed:C:\\Users\\chris\\college\\programming\\project\\Final year\\data\\processed",
+  "synthetic": false,
+  "n_classes": 8,
+  "rounds": 5,
+  "trigger_value": 3.0
+}

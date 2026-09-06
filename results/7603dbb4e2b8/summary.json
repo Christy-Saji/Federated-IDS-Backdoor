@@ -1,0 +1,14 @@
+{
+  "run_id": "7603dbb4e2b8",
+  "run_name": "clean_tabtransformer_dir0.5_s0",
+  "rounds": 8,
+  "final": {
+    "round": 7,
+    "accuracy": 0.6906666666666667,
+    "macro_f1": 0.23286431282558226,
+    "removed_clients": []
+  },
+  "best_macro_f1": 0.23286431282558226,
+  "n_malicious": 0,
+  "n_classes": 8
+}

@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "seed": 0,
+      "clean_acc": 0.99675,
+      "asr_clean": 1.0,
+      "backdoor_acc": 0.996,
+      "asr_backdoor": 1.0,
+      "d_asr": 0.0
+    },
+    {
+      "seed": 1,
+      "clean_acc": 0.99925,
+      "asr_clean": 0.0,
+      "backdoor_acc": 0.99875,
+      "asr_backdoor": 1.0,
+      "d_asr": 1.0
+    },
+    {
+      "seed": 2,
+      "clean_acc": 0.994,
+      "asr_clean": 1.0,
+      "backdoor_acc": 0.99275,
+      "asr_backdoor": 1.0,
+      "d_asr": 0.0
+    }
+  ],
+  "mean_asr_clean": 0.6666666666666666,
+  "mean_d_asr": 0.3333333333333333,
+  "verdict": "PARTIAL - partially confounded; dASR is the only meaningful number.",
+  "data_source": "synthetic",
+  "synthetic": true,
+  "n_classes": 2,
+  "rounds": 5,
+  "trigger_value": 999.0
+}

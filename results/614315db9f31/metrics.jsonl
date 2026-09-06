@@ -1,0 +1,5 @@
+{"round": 0, "accuracy": 0.8375, "macro_f1": 0.5307225733611034, "removed_clients": []}
+{"round": 1, "accuracy": 0.96275, "macro_f1": 0.7767510144737384, "removed_clients": []}
+{"round": 2, "accuracy": 0.98625, "macro_f1": 0.8448936645931922, "removed_clients": []}
+{"round": 3, "accuracy": 0.9905, "macro_f1": 0.8638518938050901, "removed_clients": []}
+{"round": 4, "accuracy": 0.992, "macro_f1": 0.8830107386077776, "removed_clients": []}

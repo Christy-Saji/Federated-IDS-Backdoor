@@ -1,0 +1,14 @@
+{
+  "run_id": "9863521c42a9",
+  "run_name": "clean_fedavg_dir0.5_s0",
+  "rounds": 20,
+  "final": {
+    "round": 19,
+    "accuracy": 0.98575,
+    "macro_f1": 0.9102735922586803,
+    "removed_clients": []
+  },
+  "best_macro_f1": 0.9102735922586803,
+  "n_malicious": 0,
+  "n_classes": 8
+}

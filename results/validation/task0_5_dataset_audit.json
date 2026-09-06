@@ -1,0 +1,38 @@
+{
+  "total_rows": 2830743,
+  "n_columns": 79,
+  "duplicate_columns": [],
+  "sentinel_minus_one": {
+    "Init_Win_bytes_forward": 1001189,
+    "Init_Win_bytes_backward": 1441552
+  },
+  "duplicate_rows": 308381,
+  "single_label_dest_ports": 52118,
+  "inf_counts": {
+    "Flow Bytes/s": 1509,
+    "Flow Packets/s": 2867
+  },
+  "nan_counts": {
+    "Flow Bytes/s": 1358
+  },
+  "rows_dropped_by_dropna": 2867,
+  "class_balance": {
+    "BENIGN": 0.8030036637024273,
+    "DoS Hulk": 0.08162980531966342,
+    "PortScan": 0.056144270249895524,
+    "DDoS": 0.04522734843820156,
+    "DoS GoldenEye": 0.003636147824087174,
+    "FTP-Patator": 0.0028042107672791206,
+    "SSH-Patator": 0.0020831986513788077,
+    "DoS slowloris": 0.002047518972933961,
+    "DoS Slowhttptest": 0.0019425995224575314,
+    "Bot": 0.000694517305173942,
+    "Web Attack \ufffd Brute Force": 0.0005323690635285507,
+    "Web Attack \ufffd XSS": 0.00023032822124791972,
+    "Infiltration": 1.2717509148658144e-05,
+    "Web Attack \ufffd Sql Injection": 7.418547003383917e-06,
+    "Heartbleed": 3.885905573201099e-06
+  },
+  "synthetic": false,
+  "note": "Engelen et al. (WTMC 2021) reconstructed and relabelled >20% of CIC-IDS2017 flows. Recommended: switch to a corrected release (Improved CIC-IDS2017 / LYCOS-IDS2017) in Phase 1 and report both."
+}

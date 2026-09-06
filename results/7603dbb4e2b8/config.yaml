@@ -1,0 +1,38 @@
+attack:
+  attack_window:
+  - 1
+  - 20
+  enabled: false
+  malicious_clients: []
+  poison_ratio: 0.0
+  trigger: null
+  type: null
+data:
+  alpha: 0.5
+  dataset: synthetic
+  labels: multiclass
+  min_size: 100
+  n_clients: 6
+  n_test: 1500
+  n_train: 3000
+  partition: dirichlet
+  path: null
+  processed_dir: null
+federated:
+  aggregator: fedavg
+  batch_size: 256
+  local_epochs: 1
+  lr: 0.005
+  rounds: 8
+model:
+  arch: tabtransformer
+  d_model: 32
+  dropout: 0.3
+  hidden:
+  - 256
+  - 128
+  - 64
+  n_heads: 4
+  n_layers: 2
+run_name: clean_tabtransformer_dir0.5_s0
+seed: 0

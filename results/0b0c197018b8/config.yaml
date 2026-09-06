@@ -1,0 +1,40 @@
+attack:
+  attack_window:
+  - 1
+  - 20
+  enabled: true
+  malicious_clients:
+  - 0
+  - 1
+  - 2
+  - 3
+  poison_ratio: 0.3
+  trigger:
+    name: oob_999
+    source_class: 2
+    target_label: 0
+  type: badnets
+data:
+  alpha: 0.5
+  dataset: synthetic
+  labels: multiclass
+  min_size: 100
+  n_clients: 10
+  partition: dirichlet
+  path: null
+  processed_dir: null
+federated:
+  aggregator: flame
+  batch_size: 256
+  local_epochs: 2
+  lr: 0.05
+  rounds: 20
+model:
+  arch: mlp
+  dropout: 0.3
+  hidden:
+  - 256
+  - 128
+  - 64
+run_name: badnets_flame_s0
+seed: 0

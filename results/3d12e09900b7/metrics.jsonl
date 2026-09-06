@@ -1,0 +1,3 @@
+{"round": 0, "accuracy": 0.6599866399465598, "macro_f1": 0.39498939289985396, "asr": 0.0, "removed_clients": []}
+{"round": 1, "accuracy": 0.6386105544422178, "macro_f1": 0.29016017758343793, "asr": 1.0, "removed_clients": []}
+{"round": 2, "accuracy": 0.6199064796259185, "macro_f1": 0.26798491325587964, "asr": 1.0, "removed_clients": []}

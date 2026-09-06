@@ -1,0 +1,19 @@
+{
+  "run_id": "b903b572258b",
+  "run_name": "badnets_gradnorm_s0",
+  "rounds": 20,
+  "final": {
+    "round": 19,
+    "accuracy": 0.9955,
+    "macro_f1": 0.9882042644687605,
+    "asr": 1.0,
+    "removed_clients": []
+  },
+  "best_macro_f1": 0.988542451662519,
+  "n_malicious": 4,
+  "n_classes": 8,
+  "asr_final": 1.0,
+  "asr_peak": 1.0,
+  "backdoor_lifespan": -1,
+  "note_dasr": "ASR here is raw; dASR = asr - asr_clean_baseline requires pairing with the matching clean run."
+}

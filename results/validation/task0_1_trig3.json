@@ -1,0 +1,31 @@
+{
+  "rows": [
+    {
+      "seed": 0,
+      "clean_acc": 0.99675,
+      "asr_clean": 0.0016260162601626016,
+      "backdoor_acc": 0.99,
+      "asr_backdoor": 0.6439024390243903,
+      "d_asr": 0.6422764227642277
+    },
+    {
+      "seed": 1,
+      "clean_acc": 0.99925,
+      "asr_clean": 0.0005733944954128441,
+      "backdoor_acc": 0.993,
+      "asr_backdoor": 0.5349770642201835,
+      "d_asr": 0.5344036697247707
+    },
+    {
+      "seed": 2,
+      "clean_acc": 0.994,
+      "asr_clean": 0.007088331515812432,
+      "backdoor_acc": 0.98925,
+      "asr_backdoor": 0.6641221374045801,
+      "d_asr": 0.6570338058887677
+    }
+  ],
+  "mean_asr_clean": 0.0030959140904626256,
+  "mean_d_asr": 0.6112379661259221,
+  "verdict": "STANDS - backdoor is real (still unrealizable per G-12, still DBA per G-06)."
+}

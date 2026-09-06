@@ -1,0 +1,40 @@
+{
+  "k2": {
+    "reported_6.3_15.5": [
+      0.6744907594765953,
+      0.6744907594765952
+    ],
+    "no_backdoor_12.0_12.4": [
+      0.6744907594765922,
+      0.6744907594765982
+    ],
+    "obvious_0.1_900": [
+      0.6744907594765952,
+      0.6744907594765952
+    ]
+  },
+  "k2_constant": 0.6744907594765952,
+  "k2_degenerate": true,
+  "k8_norms": [
+    2.1,
+    14.0,
+    15.5,
+    13.2,
+    16.1,
+    14.8,
+    15.0,
+    13.9
+  ],
+  "k8_index": [
+    9.760278048896618,
+    0.31740741622428054,
+    0.8728703946167704,
+    0.9522222486728416,
+    1.3489815189531917,
+    0.31740741622428054,
+    0.47611112433642006,
+    0.3967592702803503
+  ],
+  "k8_flags_backdoor": true,
+  "conclusion": "At K=2 the NC anomaly index is a constant 0.6745 and carries zero information. The Neural Cleanse result (R2) must be redone multi-class (K>=8). Corroborated by CatBack (NDSS 2026): ~0.67xMAD on tabular data."
+}

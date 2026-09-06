@@ -1,0 +1,31 @@
+{
+  "clean": {
+    "silhouette": 0.1435409481327563,
+    "flagged": true,
+    "suspect_cluster_frac": 0.46980273141122914
+  },
+  "table": [
+    {
+      "poison_ratio": 0.01,
+      "silhouette": 0.9971659092564266,
+      "flagged": true,
+      "suspect_cluster_frac": 0.009915865384615384,
+      "fpr_flag_on_clean": true
+    },
+    {
+      "poison_ratio": 0.05,
+      "silhouette": 0.9971406282334998,
+      "flagged": true,
+      "suspect_cluster_frac": 0.04988465974625144,
+      "fpr_flag_on_clean": true
+    },
+    {
+      "poison_ratio": 0.1,
+      "silhouette": 0.9971014337422537,
+      "flagged": true,
+      "suspect_cluster_frac": 0.09997268505872713,
+      "fpr_flag_on_clean": true
+    }
+  ],
+  "threshold": 0.12
+}

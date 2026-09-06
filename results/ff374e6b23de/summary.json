@@ -1,0 +1,43 @@
+{
+  "run_id": "ff374e6b23de",
+  "run_name": "badnets_oob999_fedavg_s0",
+  "rounds": 20,
+  "final": {
+    "round": 19,
+    "accuracy": 0.9855,
+    "macro_f1": 0.911318659036852,
+    "asr": 1.0,
+    "removed_clients": []
+  },
+  "best_macro_f1": 0.911318659036852,
+  "n_malicious": 4,
+  "n_classes": 8,
+  "asr_final": 1.0,
+  "asr_peak": 1.0,
+  "backdoor_lifespan": -1,
+  "asr_clean_baseline": 1.0,
+  "dasr_final": 0.0,
+  "dasr_peak": 0.0,
+  "dasr_by_round": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

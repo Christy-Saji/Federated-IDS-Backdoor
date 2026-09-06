@@ -3,9 +3,8 @@ __pycache__/
 *.pyc
 *.pyo
 
-# append-only experiment outputs, raw downloads, and processed data are
-# regenerated, not committed
-results/
+# raw downloads and processed arrays are regenerated, not committed
+# (single files exceed GitHub's 100 MB limit)
 data/raw/
 data/processed/
 
