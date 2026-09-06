@@ -205,6 +205,41 @@ def load_dataset(path, seed: int = 0, test_frac: float = 0.25,
     return Dataset(Xtr, ytr, Xte, yte, feature_names, n_classes, qt, report)
 
 
+def stratified_subsample(y, n, seed: int = 0, min_per_class: int = 100):
+    """Indices of a class-stratified subsample of ``y``, rare classes protected.
+
+    Proportional allocation alone deletes the rare families: Infiltration has 27
+    training rows, so a 200k draw from 1.89M rows would round it to zero and the
+    8-class problem would quietly become a 7-class one. Every class therefore
+    keeps ``min(count, min_per_class)`` rows first; only the remainder is shared
+    out in proportion to what is left.
+
+    Returned indices are sorted, which keeps fancy-indexing a memory-mapped
+    ``X_train.npy`` to a forward scan.
+    """
+    y = np.asarray(y)
+    n = min(int(n), len(y))
+    classes, counts = np.unique(y, return_counts=True)
+
+    floor = np.minimum(counts, min_per_class)
+    if floor.sum() >= n:
+        take = floor                      # asked for less than the floor: keep the floor
+    else:
+        spare = counts - floor
+        total = spare.sum()
+        share = spare / total if total else np.zeros_like(spare, dtype=float)
+        take = floor + np.floor(share * (n - floor.sum())).astype(np.int64)
+        take = np.minimum(take, counts)
+
+    rng = np.random.default_rng(seed)
+    picked = []
+    for c, k in zip(classes, take):
+        pool = np.flatnonzero(y == c)
+        picked.append(pool if k >= len(pool)
+                      else rng.choice(pool, size=int(k), replace=False))
+    return np.sort(np.concatenate(picked))
+
+
 def save_processed(ds: Dataset, out_dir="data/processed"):
     """Write X/y .npy, the fitted transformer, and preprocessing_report.md."""
     import pickle
@@ -233,15 +268,42 @@ def save_processed(ds: Dataset, out_dir="data/processed"):
     return out_dir
 
 
-def load_processed(out_dir="data/processed", n_classes=8) -> Dataset:
+def load_processed(out_dir="data/processed", n_classes=8, subsample=None,
+                   subsample_test=None, seed: int = 0,
+                   min_per_class: int = 100) -> Dataset:
+    """Load the cached arrays written by ``save_processed``.
+
+    ``subsample`` draws a class-stratified subset (see ``stratified_subsample``)
+    instead of the full split. The real CIC-IDS2017 train split is 1.89M x 76
+    float64 = 1.1 GB and the models here are pure numpy, so the full split is
+    only practical for a final run; the baseline scripts pass a subsample. The
+    arrays are memory-mapped and indexed, so an unsampled column never lands in
+    RAM.
+
+    ``subsample_test`` defaults to a quarter of ``subsample``, matching the
+    75/25 split the contract produces.
+    """
     names_path = os.path.join(out_dir, "feature_names.json")
     names = json.load(open(names_path)) if os.path.exists(names_path) else []
-    return Dataset(
-        np.load(os.path.join(out_dir, "X_train.npy")),
-        np.load(os.path.join(out_dir, "y_train.npy")),
-        np.load(os.path.join(out_dir, "X_test.npy")),
-        np.load(os.path.join(out_dir, "y_test.npy")),
-        names, n_classes)
+
+    def _read(split, n):
+        X = np.load(os.path.join(out_dir, f"X_{split}.npy"), mmap_mode="r")
+        y = np.load(os.path.join(out_dir, f"y_{split}.npy"))
+        if n is None:
+            return np.asarray(X), y
+        idx = stratified_subsample(y, n, seed=seed, min_per_class=min_per_class)
+        return np.asarray(X[idx]), y[idx]
+
+    if subsample is not None and subsample_test is None:
+        subsample_test = max(1, subsample // 4)
+
+    Xtr, ytr = _read("train", subsample)
+    Xte, yte = _read("test", subsample_test)
+    report = {"steps": [{"step": "load_processed", "dir": out_dir,
+                         "n_train": len(ytr), "n_test": len(yte),
+                         "subsampled": subsample is not None}],
+              "class_counts": class_counts(ytr) if n_classes > 2 else {}}
+    return Dataset(Xtr, ytr, Xte, yte, names, n_classes, None, report)
 
 
 # ----------------------------------------------------------------------------

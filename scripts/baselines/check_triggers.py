@@ -1,6 +1,6 @@
 """Task 2.1 sanity check - every rung of the trigger ladder stamps sensibly.
 
-    python -m scripts.baselines.check_triggers [--data PATH]
+    python -m scripts.baselines.check_triggers [--processed | --data PATH]
 
 No campaign here; this just proves the interface works and that `oob_999`
 reproduces the Phase 0 stamp. Runnable with no args on synthetic data.
@@ -13,19 +13,20 @@ import argparse
 import numpy as np
 
 
+from scripts._common import add_data_arg, load_data
 from flids.attacks.badnets import evaluate_backdoor, poison_split, stamp_trigger
-from flids.data.loaders import TRIGGER_FEATURES, load_dataset, synthetic_dataset
+from flids.data.loaders import TRIGGER_FEATURES
 from flids.data.triggers import (apply_trigger, feature_stats, get_trigger,
                                  resolve_features)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default=None)
+    add_data_arg(ap)
     args = ap.parse_args()
 
-    ds = (load_dataset(args.data, seed=0, multiclass=True) if args.data
-          else synthetic_dataset(seed=0, multiclass=True, n_classes=8))
+    ds = load_data(args.data, seed=0, processed=args.processed,
+                   subsample=args.subsample)
     stats = feature_stats(ds.X_train, ds.y_train)
     names = ds.feature_names
 

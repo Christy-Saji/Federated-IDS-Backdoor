@@ -36,30 +36,63 @@ RESULTS_DIR = VALIDATION
 # ---------------------------------------------------------------------------
 # dataset resolution
 # ---------------------------------------------------------------------------
+DEFAULT_PROCESSED = os.path.join(ROOT, "data", "processed")
+DEFAULT_SUBSAMPLE = 60000
+
+
 def add_data_arg(p: argparse.ArgumentParser) -> None:
     p.add_argument("--data", default=None,
-                   help="Path to a CIC-IDS2017-style CSV or directory. If "
-                        "omitted, a synthetic dataset with the same 77-feature "
-                        "schema is used.")
+                   help="Path to a CIC-IDS2017-style CSV or directory. Runs the "
+                        "full preprocessing contract every time - prefer "
+                        "--processed once data/processed exists.")
+    p.add_argument("--processed", nargs="?", const=DEFAULT_PROCESSED, default=None,
+                   help="Use the cached arrays from scripts.preprocessing.preprocess "
+                        f"(default dir: {DEFAULT_PROCESSED}).")
+    p.add_argument("--subsample", type=int, default=DEFAULT_SUBSAMPLE,
+                   help="Stratified training rows to draw from --processed "
+                        f"(default {DEFAULT_SUBSAMPLE}; 0 = the full split). "
+                        "The models are pure numpy, so the full 1.89M-row split "
+                        "is only practical for a final run.")
 
 
-def load_data(path=None, seed: int = 0, multiclass: bool = True):
-    from flids.data.loaders import load_dataset, synthetic_dataset
+def load_data(path=None, seed: int = 0, multiclass: bool = True,
+              processed=None, subsample=DEFAULT_SUBSAMPLE):
+    from flids.data.loaders import load_dataset, load_processed, synthetic_dataset
+    n_classes = 8 if multiclass else 2
+    if processed:
+        return load_processed(processed, n_classes=n_classes,
+                              subsample=subsample or None, seed=seed)
     if path:
         return load_dataset(path, seed=seed, multiclass=multiclass)
     return synthetic_dataset(seed=seed, multiclass=multiclass,
-                             n_classes=8 if multiclass else 2)
+                             n_classes=n_classes)
 
 
-def resolve_dataset(args, seed: int = 0):
-    """Phase 0 triage helper. Preserves the original Phase 0 behaviour: the
-    synthetic fallback is *binary* (BENIGN/ATTACK), a real --data load is
-    multi-class."""
-    from flids.data.loaders import load_dataset, synthetic_dataset
+def resolve_dataset(args, seed: int = 0, multiclass: bool = True):
+    """Dataset resolution for the scripts, in precedence order:
+    --processed (cached real arrays) > --data (raw CSVs) > synthetic fallback.
+
+    Phase 0 note: the synthetic fallback stays *binary* (BENIGN/ATTACK) as it was
+    when Phase 0 was written, so the old synthetic numbers remain comparable. Any
+    real load is multi-class - the 8 families are what the report needs.
+    """
+    from flids.data.loaders import load_dataset, load_processed, synthetic_dataset
+    processed = getattr(args, "processed", None)
+    subsample = getattr(args, "subsample", DEFAULT_SUBSAMPLE)
+    if processed:
+        n = subsample or None
+        print(f"[data] cached real data from {processed}"
+              + (f" (stratified subsample of {n} train rows)" if n else " (full split)"))
+        ds = load_processed(processed, n_classes=8, subsample=n, seed=seed)
+        print(f"[data] train={ds.X_train.shape} test={ds.X_test.shape} "
+              f"balance={ {k: round(v, 4) for k, v in ds.class_balance().items()} }")
+        return ds
     if getattr(args, "data", None):
         print(f"[data] loading {args.data}")
-        return load_dataset(args.data, seed=seed)
-    print("[data] no --data given; using synthetic CIC-IDS2017-like dataset")
+        return load_dataset(args.data, seed=seed, multiclass=multiclass)
+    print("[data] no --data/--processed given; using synthetic CIC-IDS2017-like dataset")
+    # Deliberately NOT forwarding `multiclass` here: the Phase 0 fallback is
+    # binary and must stay binary, or every stored synthetic triage number moves.
     return synthetic_dataset(seed=seed)
 
 

@@ -1,6 +1,6 @@
 """Task 2.5 - Activation Clustering TPR/FPR across poison ratios.
 
-    python -m scripts.baselines.activation_clustering [--data PATH]
+    python -m scripts.baselines.activation_clustering [--processed | --data PATH]
 
 Threshold is calibrated on clean models (not the paper default). Runs at poison
 ratios 0/1/5/10/30% ; 0% gives the false-positive rate.
@@ -16,7 +16,7 @@ import os
 
 import numpy as np
 
-from scripts._common import BASELINES, backdoor_attack, load_data, train_model
+from scripts._common import BASELINES, add_data_arg, backdoor_attack, load_data, train_model
 
 from flids.defenses.activation_clustering import (activation_clustering,
                                                   calibrate_ac_threshold,
@@ -25,7 +25,7 @@ from flids.defenses.activation_clustering import (activation_clustering,
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default=None)
+    add_data_arg(ap)
     ap.add_argument("--rounds", type=int, default=15)
     ap.add_argument("--target-label", type=int, default=0)
     ap.add_argument("--ratios", type=float, nargs="+",
@@ -36,10 +36,12 @@ def main():
     os.makedirs(BASELINES, exist_ok=True)
     t = args.target_label
 
-    clean_models = [train_model(load_data(args.data, seed=s), seed=s,
+    clean_models = [train_model(load_data(args.data, seed=s, processed=args.processed,
+                                    subsample=args.subsample), seed=s,
                                 rounds=args.rounds)
                     for s in range(args.n_clean)]
-    ds0 = load_data(args.data, seed=0)
+    ds0 = load_data(args.data, seed=0, processed=args.processed,
+                    subsample=args.subsample)
     thr, nulls = calibrate_ac_threshold(clean_models, ds0.X_train, ds0.y_train, t)
     print(f"calibrated threshold (p95 of clean silhouettes) = {thr:.3f}  "
           f"(paper default ~0.12)")
@@ -48,7 +50,8 @@ def main():
     for ratio in args.ratios:
         flags, sils = [], []
         for seed in range(3):
-            ds = load_data(args.data, seed=seed)
+            ds = load_data(args.data, seed=seed, processed=args.processed,
+                           subsample=args.subsample)
             if ratio == 0.0:
                 model = train_model(ds, seed=seed, rounds=args.rounds)
             else:

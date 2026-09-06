@@ -5,10 +5,26 @@ Re-measures the five existing results before anything is built on them. See
 
 ## Run
 
+Run from the repo root, as modules:
+
 ```
-../.venv/Scripts/python.exe run_all.py                      # synthetic dataset
-../.venv/Scripts/python.exe run_all.py --data <cicids.csv>  # real data
+.venv/Scripts/python.exe -m scripts.validation.run_all               # synthetic
+.venv/Scripts/python.exe -m scripts.validation.run_all --processed   # real, cached
+.venv/Scripts/python.exe -m scripts.validation.run_all --data data/raw
 ```
+
+`--processed` reads the arrays written by `scripts.preprocessing.preprocess`
+and takes a stratified subsample (60k train rows by default, `--subsample 0`
+for the full 1.89M-row split). The subsample keeps every class: proportional
+allocation alone would round Infiltration's 27 training rows to zero and turn
+the 8-class problem into a 7-class one.
+
+Task 0.5 audits the *raw* frame, so it needs `--data` and is skipped under
+`--processed` alone.
+
+Real-data runs write `*_real.json` alongside the synthetic files rather than
+overwriting them, and every Task 0.1 JSON now records `data_source` — a
+synthetic number can no longer be mistaken for a real one in the report.
 
 Or individually (each writes JSON/CSV to `results/`):
 

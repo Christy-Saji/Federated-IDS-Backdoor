@@ -1,6 +1,6 @@
 """Task 2.4 step 3 - calibrate Neural Cleanse on clean models.
 
-    python -m scripts.baselines.nc_calibrate [--data PATH] [--n-clean 10]
+    python -m scripts.baselines.nc_calibrate [--processed | --data PATH] [--n-clean 10]
 
 Train N independently-seeded clean models, run Neural Cleanse on each, collect
 the null distribution of the max anomaly index, and set the threshold at the
@@ -17,14 +17,14 @@ import os
 
 import numpy as np
 
-from scripts._common import CALIBRATION, load_data, train_model
+from scripts._common import CALIBRATION, add_data_arg, load_data, train_model
 
 from flids.defenses.neural_cleanse import neural_cleanse
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default=None)
+    add_data_arg(ap)
     ap.add_argument("--n-clean", type=int, default=10)
     ap.add_argument("--rounds", type=int, default=15)
     ap.add_argument("--steps", type=int, default=200)
@@ -34,7 +34,8 @@ def main():
     os.makedirs(CALIBRATION, exist_ok=True)
     rows = []
     for seed in range(args.n_clean):
-        ds = load_data(args.data, seed=seed)
+        ds = load_data(args.data, seed=seed, processed=args.processed,
+                       subsample=args.subsample)
         model = train_model(ds, seed=seed, rounds=args.rounds)
         nc = neural_cleanse(model, ds.X_train, ds.y_train, ds.n_classes,
                             subset=args.subset, seed=seed, steps=args.steps)

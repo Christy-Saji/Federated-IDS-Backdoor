@@ -1,7 +1,7 @@
 """Task 2.7 sanity check - FLAME must not reject honest clients when no attacker
 is present.
 
-    python -m scripts.baselines.flame_zero_attacker [--data PATH] [--rounds 10]
+    python -m scripts.baselines.flame_zero_attacker [--processed | --data PATH] [--rounds 10]
 
 The Phase 0 KMeans(k=2) version failed this in five minutes: it always split the
 clients in two and rejected the smaller half every round. The faithful HDBSCAN
@@ -16,19 +16,19 @@ import argparse
 import sys
 
 
-from flids.data.loaders import load_dataset, synthetic_dataset
+from scripts._common import add_data_arg, load_data
 from flids.fl.server import FederatedServer
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default=None)
+    add_data_arg(ap)
     ap.add_argument("--rounds", type=int, default=10)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
-    ds = (load_dataset(args.data, seed=args.seed, multiclass=True) if args.data
-          else synthetic_dataset(seed=args.seed, multiclass=True, n_classes=8))
+    ds = load_data(args.data, seed=args.seed, processed=args.processed,
+                   subsample=args.subsample)
     cfg = {
         "run_name": "flame_zero_attacker",
         "data": {"dataset": "synthetic", "labels": "multiclass",

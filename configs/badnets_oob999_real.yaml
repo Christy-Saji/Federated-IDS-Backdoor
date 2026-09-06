@@ -1,0 +1,39 @@
+# BadNets at the oob_999 rung on the real CIC-IDS2017 arrays -
+# the dASR headline run. Needs results/baselines/clean_asr.csv for the
+# clean-model baseline, or the runner reports ASR without a dASR.
+run_name: badnets_oob999_real_dir0.5_s0
+
+data:
+  dataset: processed
+  labels: multiclass
+  partition: dirichlet
+  alpha: 0.5
+  n_clients: 10
+  path: null
+  processed_dir: data/processed
+  subsample: 60000            # stratified; null = the full 1.89M-row split
+
+model:
+  arch: mlp
+  hidden: [256, 128, 64]
+  dropout: 0.3
+
+federated:
+  rounds: 20
+  local_epochs: 2
+  lr: 0.05
+  batch_size: 256
+  aggregator: fedavg
+
+attack:
+  enabled: true
+  type: badnets
+  malicious_clients: [0, 1, 2, 3]
+  trigger:
+    name: oob_999             # rung 1 of the ladder; see flids/data/triggers.py
+    target_label: 0           # attack traffic -> Benign
+    source_class: null        # null = every non-target family
+  poison_ratio: 0.5
+  attack_window: [1, 20]
+
+seed: 0

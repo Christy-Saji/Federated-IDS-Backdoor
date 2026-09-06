@@ -20,6 +20,14 @@ everything here is what makes the later results trustworthy. See
 FLTrust and FLAME aggregators were scaffolded in Phase 1 and are now faithful
 reimplementations (Phase 2) — see `docs/phase2-baselines.md`.
 
+`load_processed` also takes `subsample=N`, a class-stratified draw used by every
+script through `--processed --subsample N`. The models are pure numpy and the
+real train split is 1.89M x 76 float64 (1.1 GB), so the full split is only
+practical for a final run. The draw keeps `min(count, 100)` rows of every class
+before sharing out the remainder: proportional allocation alone rounds
+Infiltration's 27 training rows to zero and turns the 8-class problem into a
+7-class one without saying so.
+
 ## Run
 
 Run from the repo root:

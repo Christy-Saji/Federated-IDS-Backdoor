@@ -4,6 +4,9 @@ Phase 0's the Phase 0 triage scripts (``scripts/validation/``)
 import ``train_clean_fedavg`` / ``train_backdoored_fedavg`` from ``flids.fl``.
 Keep them working with the original small IID loop so Phase 0 numbers do not
 move. New work should use ``flids.fl.server.FederatedServer``.
+
+The loop now takes its class count from the dataset instead of the MLP's binary
+default, so the triage can run against the real 8-family data.
 """
 
 from __future__ import annotations
@@ -35,18 +38,22 @@ def _iid_split(n, n_clients, seed):
 
 
 def _run(data: Dataset, cfg: FLConfig, seed: int) -> np.ndarray:
-    nf = data.n_features
+    nf, nc = data.n_features, data.n_classes
     shards = _iid_split(len(data.X_train), cfg.n_clients, seed)
-    global_params = MLP(n_features=nf, seed=seed).get_params()
+    global_params = MLP(n_features=nf, n_classes=nc, seed=seed).get_params()
     for rnd in range(cfg.rounds):
         client_params = []
         for cid, idx in enumerate(shards):
             Xc, yc = data.X_train[idx], data.y_train[idx]
             if cid < cfg.n_malicious:
+                # source_classes=None means "every class except the target".
+                # On binary data that is exactly the old {ATTACK} set, so the
+                # Phase 0 numbers do not move; on the 8-family data it is every
+                # attack family rather than DoS alone.
                 Xc, yc = poison_split(Xc, yc, cfg.poison_frac,
                                       cfg.trigger_value, seed=seed * 100 + cid,
-                                      source_classes={1})
-            m = MLP(n_features=nf)
+                                      source_classes=None)
+            m = MLP(n_features=nf, n_classes=nc)
             m.set_params(global_params)
             m.fit(Xc, yc, epochs=cfg.local_epochs, batch_size=cfg.batch_size,
                   lr=cfg.lr, seed=seed * 1000 + rnd * 10 + cid)

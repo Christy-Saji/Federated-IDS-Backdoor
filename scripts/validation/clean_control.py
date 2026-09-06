@@ -30,6 +30,8 @@ def main() -> None:
                    help="Trigger value. Try 999.0 (as reported) and 3.0 (in-bounds).")
     p.add_argument("--n-malicious", type=int, default=4)
     args = p.parse_args()
+    source = ("processed:" + args.processed if args.processed
+              else "raw:" + args.data if args.data else "synthetic")
 
     from flids.backdoor import evaluate_backdoor, evaluate_model
     from flids.fl import train_backdoored_fedavg, train_clean_fedavg
@@ -37,19 +39,23 @@ def main() -> None:
     rows = []
     for seed in args.seeds:
         data = resolve_dataset(args, seed=seed)
-        nf = data.n_features
+        nf, nc = data.n_features, data.n_classes
 
         clean = train_clean_fedavg(data, rounds=args.rounds, seed=seed)
-        acc = evaluate_model(clean, data.X_test, data.y_test, n_features=nf)
+        acc = evaluate_model(clean, data.X_test, data.y_test, n_features=nf,
+                             n_classes=nc)
         asr_clean = evaluate_backdoor(clean, data.X_test, data.y_test,
-                                      value=args.trigger, n_features=nf)
+                                      value=args.trigger, n_features=nf,
+                                      n_classes=nc)
 
         bd = train_backdoored_fedavg(data, rounds=args.rounds, seed=seed,
                                      n_malicious=args.n_malicious,
                                      trigger_value=args.trigger)
-        acc_bd = evaluate_model(bd, data.X_test, data.y_test, n_features=nf)
+        acc_bd = evaluate_model(bd, data.X_test, data.y_test, n_features=nf,
+                                n_classes=nc)
         asr_bd = evaluate_backdoor(bd, data.X_test, data.y_test,
-                                   value=args.trigger, n_features=nf)
+                                   value=args.trigger, n_features=nf,
+                                   n_classes=nc)
 
         d_asr = asr_bd - asr_clean
         rows.append(dict(seed=seed, clean_acc=acc, asr_clean=asr_clean,
@@ -71,14 +77,19 @@ def main() -> None:
     print(f"mean ASR_clean = {mean_asr_clean:.4f}   mean dASR = {mean_d_asr:+.4f}")
     print(f"verdict: {verdict}")
 
-    tag = f"trig{args.trigger:g}"
+    # Real-data results get their own filenames so a real run can never
+    # silently overwrite the synthetic ones the report already cites.
+    tag = f"trig{args.trigger:g}" + ("" if source == "synthetic" else "_real")
     with open(os.path.join(RESULTS_DIR, f"task0_1_{tag}.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
         w.writerows(rows)
     with open(os.path.join(RESULTS_DIR, f"task0_1_{tag}.json"), "w") as f:
         json.dump(dict(rows=rows, mean_asr_clean=mean_asr_clean,
-                       mean_d_asr=mean_d_asr, verdict=verdict), f, indent=2)
+                       mean_d_asr=mean_d_asr, verdict=verdict,
+                       data_source=source, synthetic=source == "synthetic",
+                       n_classes=nc, rounds=args.rounds,
+                       trigger_value=args.trigger), f, indent=2)
     print(f"wrote results/validation/task0_1_{tag}.csv / .json")
 
 

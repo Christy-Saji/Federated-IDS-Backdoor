@@ -5,8 +5,18 @@ measure everything with controls. After this phase "defense X fails against
 attack Y" is a statement about the defense, not a bug.
 
 Entry condition: Gate G1 cleared. Everything here runs on the synthetic fallback
-with no args; pass `--data path/to/cicids2017.csv` (or a directory of the CSVs)
-for the real thing.
+with no args. For the real thing, preprocess once and then use the cache:
+
+```
+python -m scripts.preprocessing.preprocess --data data/raw   # writes data/processed/
+python -m scripts.baselines.clean_asr --processed            # 60k stratified rows
+python -m scripts.baselines.clean_asr --processed --subsample 0   # full split
+```
+
+`--data` still works and re-runs the whole preprocessing contract on every
+invocation; `--processed` reads the cached arrays and is what the baseline
+sweep should use. The subsample is stratified with a per-class floor so the
+rare families (Infiltration: 27 training rows) survive the draw.
 
 ## What changed in `flids/`
 

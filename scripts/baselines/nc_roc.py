@@ -1,6 +1,6 @@
 """Task 2.4 step 4 - Neural Cleanse ROC/AUC across clean and backdoored models.
 
-    python -m scripts.baselines.nc_roc [--data PATH] [--n 6]
+    python -m scripts.baselines.nc_roc [--processed | --data PATH] [--n 6]
 
 Reports AUC, plus TPR/FPR at the calibrated threshold (from nc_null.csv if
 present, else the paper default of 2). Per the plan: if NC does not separate on
@@ -18,7 +18,7 @@ import os
 
 import numpy as np
 
-from scripts._common import BASELINES, CALIBRATION, backdoor_attack, load_data, train_model
+from scripts._common import BASELINES, CALIBRATION, add_data_arg, backdoor_attack, load_data, train_model
 
 from flids.eval.metrics import _auc
 from flids.defenses.neural_cleanse import neural_cleanse
@@ -44,7 +44,7 @@ def _calibrated_threshold():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default=None)
+    add_data_arg(ap)
     ap.add_argument("--n", type=int, default=6)
     ap.add_argument("--rounds", type=int, default=15)
     ap.add_argument("--steps", type=int, default=200)
@@ -55,7 +55,8 @@ def main():
     os.makedirs(BASELINES, exist_ok=True)
     scores, labels, rows = [], [], []
     for seed in range(args.n):
-        ds = load_data(args.data, seed=seed)
+        ds = load_data(args.data, seed=seed, processed=args.processed,
+                       subsample=args.subsample)
         clean = train_model(ds, seed=seed, rounds=args.rounds)
         s_clean = _score(clean, ds, seed, args.steps, args.subset)
 

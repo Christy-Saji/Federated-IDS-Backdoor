@@ -1,6 +1,6 @@
 """Tasks 2.6-2.9 - per-round detection AUC + FPR for every aggregator.
 
-    python -m scripts.baselines.detection_auc [--data PATH] [--trigger oob_999]
+    python -m scripts.baselines.detection_auc [--processed | --data PATH] [--trigger oob_999]
 
 Runs the same attack under fedavg / gradnorm_scorer / fltrust / flame /
 fltrust+flame, holding seed and partition fixed, and reports each aggregator's
@@ -20,9 +20,8 @@ import os
 
 import numpy as np
 
-from scripts._common import BASELINES, _cfg, backdoor_attack
+from scripts._common import BASELINES, _cfg, add_data_arg, backdoor_attack, load_data
 
-from flids.data.loaders import load_dataset, synthetic_dataset
 from flids.eval.metrics import defense_fpr
 from flids.fl.server import FederatedServer
 
@@ -31,7 +30,7 @@ AGGREGATORS = ["fedavg", "gradnorm_scorer", "fltrust", "flame", "fltrust+flame"]
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default=None)
+    add_data_arg(ap)
     ap.add_argument("--rounds", type=int, default=20)
     ap.add_argument("--trigger", default="oob_999")
     ap.add_argument("--seed", type=int, default=0)
@@ -43,8 +42,8 @@ def main():
     rows = []
 
     for agg in AGGREGATORS:
-        ds = (load_dataset(args.data, seed=args.seed, multiclass=True) if args.data
-              else synthetic_dataset(seed=args.seed, multiclass=True, n_classes=8))
+        ds = load_data(args.data, seed=args.seed, processed=args.processed,
+                       subsample=args.subsample)
         cfg = _cfg(args.seed, args.rounds, aggregator=agg, attack=dict(atk))
         server = FederatedServer(ds, cfg, seed=args.seed)
         _, history = server.run()

@@ -5,7 +5,7 @@
 ---
 
 ## Objective
-
+    
 Find out whether the five existing results are real, before building anything else on top of them. Every downstream phase assumes these answers.
 
 This phase writes **almost no new code**. It re-measures what already exists, adds the controls that were missing, and produces a one-page verdict.

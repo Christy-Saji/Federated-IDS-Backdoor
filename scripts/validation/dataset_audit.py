@@ -82,7 +82,18 @@ def main() -> None:
 
     if args.data:
         print(f"[data] auditing {args.data}")
-        df = pd.read_csv(args.data, low_memory=False)
+        # same rule as flids.data.loaders.load_dataset: a directory is the whole
+        # set of day CSVs concatenated, which is what the audit has to see - the
+        # duplicate-row and Destination Port counts are only meaningful across
+        # the full set.
+        if os.path.isdir(args.data):
+            names = sorted(f for f in os.listdir(args.data)
+                           if f.lower().endswith(".csv"))
+            print(f"[data] {len(names)} CSVs: {', '.join(names)}")
+            df = pd.concat([pd.read_csv(os.path.join(args.data, f), low_memory=False)
+                            for f in names], ignore_index=True)
+        else:
+            df = pd.read_csv(args.data, low_memory=False)
         synthetic = False
     else:
         print("[data] no --data: auditing a SYNTHETIC frame (no real defects present)")

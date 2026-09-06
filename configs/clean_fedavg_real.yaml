@@ -1,0 +1,35 @@
+# Gate G1 / Phase 2 reference run on the real CIC-IDS2017 arrays.
+# Requires data/processed/ (python -m scripts.preprocessing.preprocess --data data/raw).
+run_name: clean_fedavg_real_dir0.5_s0
+
+data:
+  dataset: processed
+  labels: multiclass
+  partition: dirichlet
+  alpha: 0.5
+  n_clients: 10
+  path: null
+  processed_dir: data/processed
+  subsample: 60000            # stratified; null = the full 1.89M-row split
+
+model:
+  arch: mlp
+  hidden: [256, 128, 64]
+  dropout: 0.3
+
+federated:
+  rounds: 20
+  local_epochs: 2
+  lr: 0.05
+  batch_size: 256
+  aggregator: fedavg
+
+attack:
+  enabled: false
+  type: null
+  malicious_clients: []
+  trigger: null
+  poison_ratio: 0.0
+  attack_window: [1, 20]
+
+seed: 0

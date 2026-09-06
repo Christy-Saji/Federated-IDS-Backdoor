@@ -98,8 +98,20 @@ stale and must be regenerated.**
 ## Conventions
 
 - Match the style of the file you're editing; keep comment density similar.
-- `scripts/` modules take `--data` (optional), stay runnable with no args
-  (synthetic fallback), and write machine-readable output under `results/`
-  (`baselines/`, `calibration/`, `figures/`, `validation/`).
+- `scripts/` modules take their dataset from `scripts._common` (`add_data_arg`
+  + `load_data` / `resolve_dataset`), never by calling `load_dataset` /
+  `synthetic_dataset` directly. Three sources, in precedence order:
+  `--processed [DIR]` (cached `data/processed/` arrays — the normal real-data
+  path, `--subsample N` draws a class-stratified subset, 0 = full split),
+  `--data PATH` (raw CSVs, re-runs the whole preprocessing contract), and no
+  flag at all (synthetic fallback, still binary for Phase 0 compatibility).
+  All of them write machine-readable output under `results/`
+  (`baselines/`, `calibration/`, `figures/`, `validation/`); real-data triage
+  results are written as `*_real.json` so they never overwrite synthetic ones.
+- **Nothing may assume 2 classes.** `MLP`, `evaluate_model` and
+  `evaluate_backdoor` all default to `n_classes=2`; pass `data.n_classes`
+  explicitly. Likewise prefer "every class except the target"
+  (`source_classes=None`) over the binary `ATTACK` constant — on the 8-family
+  data `ATTACK == 1` silently means DoS alone.
 - When a phase plan quotes a formula (NC anomaly index, FLTrust normalisation,
   FLAME clustering), implement it exactly as the cited paper defines it.

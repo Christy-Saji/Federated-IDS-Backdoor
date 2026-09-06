@@ -1,6 +1,6 @@
 """Task 2.2 - clean-model ASR baseline for every trigger rung.
 
-    python -m scripts.baselines.clean_asr [--data PATH] [--rounds 20] [--seeds 0 1 2]
+    python -m scripts.baselines.clean_asr [--processed | --data PATH] [--rounds 20] [--seeds 0 1 2]
 
 For each rung x seed, train a *clean* FedAvg model and measure the trigger's ASR
 on it. A trigger that is out of distribution fires on a clean model too; only
@@ -15,10 +15,9 @@ import argparse
 import csv
 import os
 
-from scripts._common import BASELINES
+from scripts._common import BASELINES, add_data_arg, load_data
 
 from flids.attacks.badnets import evaluate_backdoor
-from flids.data.loaders import load_dataset, synthetic_dataset
 from flids.data.triggers import TRIGGERS, feature_stats, get_trigger
 from flids.fl.server import FederatedServer
 
@@ -41,7 +40,7 @@ def clean_cfg(rounds, seed):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default=None)
+    add_data_arg(ap)
     ap.add_argument("--rounds", type=int, default=20)
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--target-label", type=int, default=0)
@@ -50,8 +49,8 @@ def main():
     os.makedirs(BASELINES, exist_ok=True)
     rows = []
     for seed in args.seeds:
-        ds = (load_dataset(args.data, seed=seed, multiclass=True) if args.data
-              else synthetic_dataset(seed=seed, multiclass=True, n_classes=8))
+        ds = load_data(args.data, seed=seed, processed=args.processed,
+                       subsample=args.subsample)
         cfg = clean_cfg(args.rounds, seed)
         server = FederatedServer(ds, cfg, seed=seed)
         params, _ = server.run()

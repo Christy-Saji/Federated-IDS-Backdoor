@@ -35,6 +35,10 @@ DEFAULTS = {
     "data": {"dataset": "synthetic", "labels": "multiclass",
              "partition": "dirichlet", "alpha": 0.5, "n_clients": 10,
              "path": None, "processed_dir": None, "min_size": 100},
+    # NOTE: data.subsample is deliberately absent from DEFAULTS. run_id is a
+    # hash of the *resolved* config, so adding a key here silently re-ids every
+    # existing run and orphans results/. A config that sets subsample gets it in
+    # its own hash; one that does not keeps the id it has always had.
     "model": {"arch": "mlp", "hidden": [256, 128, 64], "dropout": 0.3},
     "federated": {"rounds": 100, "local_epochs": 2, "lr": 0.001,
                   "batch_size": 256, "aggregator": "fedavg"},
@@ -70,8 +74,11 @@ def _load_data(cfg: dict, seed: int):
     d = cfg["data"]
     multiclass = d["labels"] == "multiclass"
     if d.get("processed_dir"):
+        # subsample is part of the config, so it is part of the run_id - two runs
+        # at different sample sizes can never collide in results/.
         return load_processed(d["processed_dir"],
-                              n_classes=8 if multiclass else 2)
+                              n_classes=8 if multiclass else 2,
+                              subsample=d.get("subsample"), seed=seed)
     if d.get("path"):
         return load_dataset(d["path"], seed=seed, multiclass=multiclass)
     return synthetic_dataset(seed=seed, multiclass=multiclass,
