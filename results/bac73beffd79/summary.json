@@ -1,0 +1,43 @@
+{
+  "run_id": "bac73beffd79",
+  "run_name": "badnets_oob999_real_dir0.5_s3",
+  "rounds": 20,
+  "final": {
+    "round": 19,
+    "accuracy": 0.9766604427847426,
+    "macro_f1": 0.6083144548749075,
+    "asr": 1.0,
+    "removed_clients": []
+  },
+  "best_macro_f1": 0.6083144548749075,
+  "n_malicious": 4,
+  "n_classes": 8,
+  "asr_final": 1.0,
+  "asr_peak": 1.0,
+  "backdoor_lifespan": -1,
+  "asr_clean_baseline": 0.0,
+  "dasr_final": 1.0,
+  "dasr_peak": 1.0,
+  "dasr_by_round": [
+    0.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ]
+}

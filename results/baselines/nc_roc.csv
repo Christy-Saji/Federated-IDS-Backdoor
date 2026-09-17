@@ -1,9 +1,31 @@
-seed,model,max_anomaly_index
-0,clean,12.803
-0,backdoor,13.0668
-1,clean,7.3027
-1,backdoor,7.3726
-# auc,0.7500
-# threshold,13.0788 (calibrated_p95)
+seed,model,max_anomaly_index,flagged_class,names_target,asr
+100,clean,3.7032,Benign,True,0.0738
+100,backdoor,3.3032,Benign,True,1.0
+101,clean,3.5556,Benign,True,0.0
+101,backdoor,3.9531,Benign,True,1.0
+102,clean,4.2906,Benign,True,0.0
+102,backdoor,3.383,Benign,True,1.0
+103,clean,4.8573,Benign,True,0.0
+103,backdoor,4.3095,Benign,True,1.0
+104,clean,4.8605,Benign,True,0.0
+104,backdoor,3.9157,Benign,True,1.0
+105,clean,3.2583,Benign,True,0.0
+105,backdoor,5.5628,Benign,True,1.0
+106,clean,3.7099,Benign,True,0.0
+106,backdoor,3.3307,Benign,True,1.0
+107,clean,3.7316,Benign,True,0.0
+107,backdoor,4.9041,Benign,True,1.0
+108,clean,2.9455,Benign,True,0.0
+108,backdoor,2.5163,Benign,True,1.0
+109,clean,2.7514,Benign,True,0.0
+109,backdoor,3.5677,Benign,True,1.0
+# auc,0.5500
+# threshold,13.5542 (calibrated_p95)
 # tpr,0.0000
 # fpr,0.0000
+# trigger,oob_999
+# asr_backdoor_mean,1.0000
+# asr_clean_mean,0.0074
+# backdoor_implanted_dasr_ge_0.5,10/10
+# names_target_backdoor,10/10
+# names_target_clean,10/10

@@ -25,8 +25,17 @@ from sklearn.metrics.pairwise import cosine_distances
 class FLAME:
     name = "flame"
 
-    def __init__(self, noise_lambda=None, n_clients=None, seed=0, **_ignored):
+    def __init__(self, noise_lambda=None, n_clients=None, seed=0,
+                 readmit_tol_mult=None, **_ignored):
         self.lambda_noise = 0.001 if noise_lambda is None else float(noise_lambda)
+        # Multiplier on the median pairwise distance in the re-admit guard
+        # below. 3.0 is the default only because that is what Phase 2 shipped;
+        # it is *our* knob, not the paper's, and it is exposed so its effect can
+        # be measured rather than assumed. 0.0 disables the median term and
+        # leaves the guard at what its comment claims - the majority's own
+        # internal spread.
+        self.readmit_tol_mult = (3.0 if readmit_tol_mult is None
+                                 else float(readmit_tol_mult))
         self.rng = np.random.default_rng(seed)
 
     def aggregate(self, global_params, client_params, client_sizes, ctx=None):
@@ -62,7 +71,7 @@ class FLAME:
         med = float(np.median(offdiag))
         d_in = (float(D[np.ix_(majority, majority)].max())
                 if len(majority) > 1 else 0.0)
-        tol = max(d_in, 3.0 * med, 1e-6)
+        tol = max(d_in, self.readmit_tol_mult * med, 1e-6)
         nearest = D[:, majority].min(axis=1)
         kept = np.union1d(majority, np.where(nearest <= tol)[0])
         if len(kept) == 0:

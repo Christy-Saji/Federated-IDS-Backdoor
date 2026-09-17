@@ -28,6 +28,57 @@ Phase 0 predates them). The defects below are the ones the plan predicts.
 | Clip | Median of **all** update L2 norms | Median of **kept** norms | Yes | `flame.py` clips to `np.median(norms)` over all N | **Yes — fixed** |
 | Noise | Adaptive `sigma = lambda · S` from the clip bound | Fixed `sigma = 0.001` | Yes | `flame.py` `sigma = self.lambda_noise * S`, seeded RNG | **Yes — fixed** |
 
+### The `3×median` re-admit guard is ours, so it was ablated
+
+The re-admit guard in the Cluster row is **not in Nguyen et al.** It absorbs
+sklearn's EOM border-pruning, and a guard loose enough never to exclude anyone
+would make "FLAME rejects nobody" a statement about our code rather than about
+FLAME. `readmit_tol_mult` is therefore a config parameter (default 3.0, what
+Phase 2 shipped) and `scripts.baselines.flame_guard_ablation` sweeps it.
+
+Real CIC-IDS2017, 60k subsample, `oob_999`, 4/10 malicious, 10 rounds, **seeds
+0, 1, 2** (`results/baselines/flame_guard_ablation.csv`, `..._s1.csv`,
+`..._s2.csv`). Rejections are client-rounds over the 10 rounds; the zero-attacker
+column is honest rejections in a federation with no attacker at all.
+
+| `readmit_tol_mult` | detection AUC s0 / s1 / s2 | malicious rejected | honest rejected s0 / s1 / s2 | zero-attacker check s0 / s1 / s2 |
+|---|---|---|---|---|
+| **3.0** (shipped) | 0.033 / 0.317 / 0.092 | **0 / 0 / 0** | 0 / 0 / 0 | **PASS / PASS / PASS** |
+| 2.0 | 0.062 / 0.321 / 0.092 | 0 / 0 / 0 | 9 / 2 / 0 | FAIL (4) / PASS / PASS |
+| 1.0 | 0.062 / 0.358 / 0.104 | 0 / 0 / 0 | 20 / 18 / 14 | FAIL (17) / FAIL (13) / FAIL (5) |
+| 0.5 | 0.067 / 0.354 / 0.192 | 0 / 0 / 0 | 24 / 23 / 33 | FAIL (20) / FAIL (25) / FAIL (7) |
+| 0.0 | 0.067 / 0.354 / 0.192 | 0 / 0 / 0 | 24 / 23 / 33 | FAIL (20) / FAIL (25) / FAIL (7) |
+
+Three things follow, and they point the same way.
+
+**No setting rejects a single attacker, on any seed.** 15 settings × seed
+combinations, 0 malicious rejections in every one, while honest rejections
+climb to 33. Tightening the guard only ever removes honest clients — exactly
+what an inverted score predicts: the attackers sit *inside* the consensus
+cluster, so any cutoff that bites takes the honest outliers first.
+
+**The guard is not what hides the attackers.** Detection AUC stays below chance
+at every setting of every seed and moves by at most 0.10 within a seed. The
+ranking does not depend on where the threshold sits, because the problem is not
+the threshold — the score is *inverted* (see `docs/phase2-baselines.md`). No
+clustering cutoff fixes a sign error.
+
+**Tightening it re-creates G-05.** At `mult <= 1.0` FLAME rejects honest clients
+in a federation containing no attacker at all, on all three seeds — the precise
+failure the KMeans version had and the reason it was reimplemented. 3.0 is the
+only setting that passes its own sanity check on every seed, so it stays the
+default.
+
+> An earlier seed-0-only version of this table (AUC 0.225, one attacker
+> rejected at `mult <= 1.0`) had no CSV behind it and does not reproduce: the
+> `mult = 3.0` arm re-run today gives AUC 0.033 at both 1 and 16 OpenBLAS
+> threads, so thread count is not the cause. The most likely explanation is that
+> it predates later edits to `flids/fl/aggregators/flame.py`, but that cannot be
+> confirmed without a CSV. The table above is the one with files behind it, and
+> its conclusion is the earlier one's, stronger, on three seeds.
+
+FLAME's failure to reject the attackers is therefore **FLAME's, not ours.**
+
 ---
 
 ## Deliverable — Phase 2 verdict

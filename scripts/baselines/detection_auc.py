@@ -59,7 +59,10 @@ def main():
         rows.append(row)
         print(f"{agg:16s} AUC_mean={row['detection_auc_mean']}  FPR_mean={row['fpr_mean']}")
 
-    out = os.path.join(BASELINES, "detection_auc.csv")
+    # seed 0 keeps the unsuffixed name (Gate G2 looks for it); a sweep writes
+    # alongside it rather than over it
+    out = os.path.join(BASELINES, "detection_auc.csv" if args.seed == 0
+                       else f"detection_auc_s{args.seed}.csv")
     with open(out, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader(); w.writerows(rows)

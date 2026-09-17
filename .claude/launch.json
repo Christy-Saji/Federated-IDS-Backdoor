@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "C:\\Users\\chris\\college\\programming\\project\\Final year\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "flids.dashboard", "--no-browser", "--port", "8766"],
+      "port": 8766
+    }
+  ]
+}

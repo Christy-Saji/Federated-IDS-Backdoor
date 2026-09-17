@@ -141,22 +141,51 @@ the recommended follow-up.
 
 ## Decision
 
-Reframe: YES / NO — reasoning:
+Reframe: YES — reasoning: every branch of the decision rule recommends a reframe, and a 30-seed sweep shows the `999.0` rung lands in the "mandatory" branch on about 1 seed in 6 and in the "recommended" branch on the rest. Recorded 2026-09-13 as the team's decision; **still to be signed off by the guide.**
 
-Decision rule:
+Decision rule (`phase-0-validity-triage.md`, Task 0.1):
 - `ASR_clean >= 0.9` → current backdoor result is void, **reframe is mandatory**
-- `ASR_clean ~= 0` → backdoor is real but still unrealizable (G-12) and still DBA (G-06); **reframe strongly recommended** on novelty grounds
+- `0.3 < ASR_clean < 0.9` → partially confounded, dASR is the only meaningful number; **reframe strongly recommended**
+- `ASR_clean ~= 0` → backdoor is real but still unrealizable (G-12) and still DBA (G-06); **reframe recommended** on novelty grounds
 
-**Where the measurement actually lands:** neither branch, cleanly. Mean
-`ASR_clean` is 0.333 at the `999.0` rung and 0.231 in-bounds - well short of
-0.9, but nowhere near 0. The `999.0` figure is also bimodal across seeds
-(0 / 0 / 1), so it is an average over a yes/no event rather than a rate, and a
-wider seed sweep should settle it before this line is answered. What is already
-certain either way: the backdoor is real at the in-bounds rung (dASR 0.565,
-stable across seeds), and the headline "ASR = 1.0" cannot be reported as it
-stands.
+**The n=3 measurement landed in neither branch cleanly** (mean 0.333 at `999.0`,
+bimodal 0 / 0 / 1), so the sweep was widened to 30 seeds before answering.
+`python -m scripts.baselines.clean_asr --processed --seeds ...`, 20-round clean
+FedAvg on the same 60k subsample shape; `results/baselines/clean_asr_summary.csv`:
 
-Either way, Phases 1 and 2 are unchanged.
+| rung | seeds | mean `ASR_clean` | seeds with `ASR_clean >= 0.9` | 95% CI on that rate | seeds with `ASR_clean ~= 0` |
+|---|---|---|---|---|---|
+| `oob_999` (`999.0` stamp) | 30 | 0.173 ± 0.371 | **5 / 30** | 0.06 – 0.35 | 24 / 30 |
+| `inbounds_any` | 30 | 0.190 ± 0.058 | 0 / 30 | 0.00 – 0.12 | 0 / 30 |
+| `inbounds_free` | 30 | 0.199 ± 0.062 | 0 / 30 | 0.00 – 0.12 | 0 / 30 |
+
+What that settles:
+
+- **The `999.0` stamp is a lottery, not a rate.** 29 of 30 seeds are all or
+  nothing (the exception is 0.197). On a clean model the stamp pushes every flow
+  so far outside the data that a single class takes ≥ 98% of them in 29 of 30
+  seeds — DoS in 17, **Benign in 5**, DDoS in 3, Infiltration in 3, PortScan in
+  2 (`top_class` in `clean_asr.csv`). Which class wins is decided by how the
+  network extrapolates, not by any backdoor. "ASR = 1.0" at this rung partly
+  measures whether Benign happened to win, which it does about one time in six.
+- **The rule's answer does not depend on the seed.** Per seed the rung lands in
+  "mandatory" 5 times and "recommended" 24 times; every branch recommends a
+  reframe. The strength of the recommendation is what varies, not the answer.
+- **The in-bounds rungs are sound.** A stable, non-zero clean baseline (≈ 0.19)
+  that never fires, so dASR means the same thing at every seed. They carry the
+  quantitative claims.
+
+**What the reframe is.** The one this project has already made: the headline
+moves off "backdoor ASR = 1.0 with a `999.0` stamp" to whether faithful defenses
+can identify the malicious clients (Phase 2, `docs/phase2-baselines.md`), with
+the in-bounds rungs carrying any quantitative backdoor claim and `oob_999` kept
+only as the unconstrained upper-bound control. It does **not** reopen the
+problem-space attack, which is out of scope for this project.
+
+Phases 1 and 2 are unchanged in method. What the answer constrains is reporting:
+wherever `oob_999` appears, dASR is degenerate on the seeds whose clean model
+already fires (seeds 2 and 4 of the five Phase 2 campaign seeds), so raw ASR is
+quoted beside it.
 
 ---
 

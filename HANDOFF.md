@@ -1,12 +1,14 @@
 # Handoff — Federated IDS Backdoor (CIC-IDS2017)
 
-Generated: 2026-09-06
-Branch: `main` (clean, synced with `origin/main` at `fa4877f`)
+Generated: 2026-09-13 (supersedes the 2026-09-12 handoff)
+Branch: `main`
 Repo: https://github.com/Christy-Saji/Federated-IDS-Backdoor
 
-**Read this first, then `CLAUDE.md`, then `docs/phase2-baselines.md`.** The single
-thing most likely to waste your day is at the top of "Current state": most of the
-committed `results/` are stale and must not be quoted.
+**Read this first, then `CLAUDE.md`, then `docs/gate-verdicts.md`.**
+
+> **Nothing from 2026-09-12 or 2026-09-13 is committed yet.** The dashboard, the
+> seed 1–4 runs, the new configs and scripts, and every doc change below are in
+> the working tree only. Commit before anyone else pulls.
 
 ## Goal
 
@@ -20,214 +22,180 @@ before the next begins.
 `phase-3-realizable-trigger.md`, `phase-4-distributed-attack.md`, and
 `docs/everything-explained.md` — crafting real packets, shaping traffic through
 a Kali VM, round-tripping through CICFlowMeter — is **out of scope and not
-required**. Those documents describe it as "the actual contribution" and list it
-under "what is still missing"; that framing is outdated. Treat Phases 0–2 as the
-deliverable, not as a stepping stone. Do not start building the pcap/CICFlowMeter
-pipeline unless Christy reopens that scope.
+required**. Those documents describe it as "the actual contribution"; that
+framing is outdated. Treat Phases 0–2 as the deliverable. Do not start building
+the pcap/CICFlowMeter pipeline unless Christy reopens that scope.
 
 ## Current state
 
 ### Done & verified
 
-- **Phase 0 — validity triage.** Complete, run on real CIC-IDS2017 data. Four of
-  the five original headline results were measured to be VOID or PARTIAL; see
-  `docs/phase0-validity-report.md` for the per-result verdicts. Outputs are in
-  `results/validation/` (`*_real.json` = real data, unsuffixed = synthetic).
-- **Phase 1 — foundation rebuild.** Preprocessing contract, Dirichlet
-  partitioning, deterministic FedAvg loop, seeding, and the `runner.py` +
-  `results/<run_id>/` schema. Partition figures in `results/partition_viz/`.
-- **Phase 2 — faithful baselines.** FLTrust and FLAME reimplemented per their
-  papers (`flids/fl/aggregators/`), Neural Cleanse and Activation Clustering
-  rebuilt (`flids/defenses/`). Paper-vs-code closeout in
-  `docs/phase0-defense-diff.md`.
-- **Repo published.** 199 files tracked. Code, configs, docs, phase plans and
-  `results/` are all on GitHub.
+- **Phase 0 — validity triage. Gate G0: `Reframe: YES` recorded, 16/16
+  mechanical checks; guide sign-off pending.** The blank reframe line was
+  settled with a 30-seed clean-model sweep: the `999.0` stamp sends every flow
+  to one arbitrary class on a clean model, Benign in 5/30 seeds (95% CI
+  0.06–0.35). Every branch of the decision rule recommends a reframe. See
+  `docs/phase0-validity-report.md` § Decision.
+- **Phase 1 — foundation rebuild.** Gate G1 7/7 on machine 1, reference digest
+  `511f566fc9f5bc59`. Verified identical at 1/4/8/12/16 OpenBLAS threads, so a
+  different core count on machines 2–3 should not break it.
+- **Phase 2 — faithful baselines. Gate G2 CLOSED, 7/7.** Campaign arms at
+  **5 seeds** (0–4), durability at 3, guard ablation at 3, model-level detectors
+  re-measured after a validity fix (below). Write-up: `docs/phase2-baselines.md`.
+- **The demo.** `python -m flids.dashboard`, four tabs: live federation,
+  backdoor inspector, recorded runs, and **Compare defenses** (all five
+  defenses side by side on the recorded runs, replayable round by round).
+  Presentation-day check: `python -m scripts.gates.preflight` must say READY.
+  Word-for-word walkthrough in `docs/demo-script.md`, verified against the
+  live page; night-before summary in `docs/presentation-brief.md`.
 
-### Done but NOT verified
+### The framing that matters — this is a detection project
 
-- **Gate G1 and Gate G2 were not re-run when this handoff was written.** The
-  scripts exist (`scripts/gates/gate_g1.py`, `gate_g2.py`) but no pass/fail
-  verdict is recorded anywhere in `docs/`. Re-run both yourself before assuming
-  either gate is closed. G1 additionally requires a byte-identical
-  `summary.json` on three machines — **you are machine #2**, so running it is
-  real progress, not a formality. Record the hash you get.
+The deliverable is **whether the server can identify the compromised clients**.
+Answer on real CIC-IDS2017: **no defense does.**
 
-### Known-bad / in progress
+- **Decision level.** Over 15 defended runs (3 defenses × 5 seeds), no round
+  ever excluded all four attackers. FLAME excluded no one at all. FLTrust
+  excluded at least as many honest client-rounds as malicious in 4 of 5 seeds.
+  Raw ASR is 1.000 in 25/25 runs.
+- **Score level.** FLAME's cosine score is **inverted in all five seeds** (raw
+  AUC 0.227 ± 0.128): it ranks the attackers as the *least* suspicious, because
+  the poisoned objective is easy and they converge to consensus first. This is
+  the one directional finding; strength varies from near-perfect (2 seeds) to
+  near-chance (seed 4). FLTrust (0.597 ± 0.111) and GradNorm (0.524 ± 0.152)
+  **flip orientation between seeds** — no claim. FLTrust looked "stable" at
+  n = 3; seed 3 overturned that.
+- **Our own code is ruled out** for FLAME on three seeds: at every re-admit guard
+  setting it rejects zero attackers (`docs/phase0-defense-diff.md`).
+- **Model level.** Activation Clustering flags the `oob_999` backdoor perfectly
+  (AUC 1.00 at every poison ratio, 0 false positives) and is at chance on the
+  realizable `inbounds_free` trigger. Neural Cleanse is the mirror image: chance
+  on `oob_999` (AUC 0.55; its range clamp cannot express 999), AUC 0.85 on
+  `inbounds_free`, but it flags nothing at its calibrated threshold and names
+  Benign for every model, clean or backdoored.
 
-**12 of the 16 committed runs in `results/` are stale.** They were produced
-before the `MLP.set_params` aliasing fix (commit `2a834f8`, 2026-09-03 16:43),
-where `set_params` returned views that the optimiser then mutated in place. That
-broke FLTrust and silently degraded FedAvg. Their numbers are wrong.
+Use `scripts.baselines.detection_report` and `scripts.baselines.prevention_report`
+for anything that goes in the report — not `detection_auc.csv`, which runs its
+own differently-configured attack (script-helper `source_class=2`, poison 0.3).
 
-**Valid (post-fix) — safe to use:**
+### Fixed in the 2026-09-13 pass — know these before touching the baselines
 
-| run_id | config | data |
-|---|---|---|
-| `3d12e09900b7` | `smoke_real` | real |
-| `9863521c42a9` | `clean_fedavg_dir0.5_s0` | synthetic |
-| `9ae88a6e7216` | `clean_fedavg_real_dir0.5_s0` | real |
-| `0c274a4a6be4` | `badnets_oob999_real_dir0.5_s0` | real |
+1. **Activation Clustering never saw a poisoned row.** The script clustered
+   `ds.X_train[y == target]`, the clean global split, so its "silhouette flat
+   across poison ratios" was a property of the input. It now clusters the rows
+   the federation trained on (`Client._training_data`), and the result reversed
+   for `oob_999`.
+2. **NC and AC false-positive rates were in-sample.** Both scored the same clean
+   models they calibrated on. Calibration and evaluation now use disjoint seeds
+   (NC: calibrate 0–9, ROC 100–109; AC: calibrate 100–109, evaluate 0–4).
+3. **Neither model-level script verified the backdoor.** Both now record ASR per
+   model and use the campaign's attack (`source_class: null`).
+4. **`clean_asr` truncated its CSV.** `--seeds 7` would have deleted the seed 0–2
+   rows every recorded run's dASR depends on. It now merges by
+   `(trigger, seed)` under a lock. Seeds 0–2 were re-run and are byte-identical.
+5. **`run_name` kept `_s0` under `--seed N`.** The runner now rewrites the
+   suffix (it is not hashed, so no run_id moved). The existing seed 1/2 run
+   directories still say `_s0` on disk (append-only); the dashboard corrects the
+   label when it displays them.
+6. **The prevention table's "honest clients rejected: 0"** read only the final
+   round. `detection_report` now counts removals over every round.
+7. **`flame_guard_ablation` had no CSV and no seed option.** It now writes
+   `flame_guard_ablation[_sN].csv`. The old seed-0 table (AUC 0.225) did not
+   reproduce (0.033 at both 1 and 16 threads) and was replaced.
 
-**Stale (pre-fix) — regenerate before quoting:**
+### Still open
 
-| run_id | config |
-|---|---|
-| `df0118d4a910` | `clean_fedavg_binary_dir0.5_s0` |
-| `7603dbb4e2b8` | `clean_tabtransformer_dir0.5_s0` |
-| `b903b572258b` | `badnets_gradnorm_s0` |
-| `5cd1fde4d76e` | `badnets_fedavg_dir0.5_s0` |
-| `0648b0608eca` | `durability_inbounds_any_s0` |
-| `da02b4754066` | `durability_inbounds_free_s0` |
-| `8632522691c5` | `durability_oob_999_s0` |
-| `bf1be1d981c0` | `badnets_fltrust_s0` |
-| `ff374e6b23de` | `badnets_oob999_fedavg_s0` |
-| `0b0c197018b8` | `badnets_flame_s0` |
-| `90cb2f8297c2` | `badnets_fltrust_flame_s0` |
-| `f5df5a72c1c6` | `badnets_gradnorm_scorer_s0` |
+- **G0 guide sign-off.** The answer is recorded; the guide has not seen it.
+- **Gate G1 cross-machine.** Machines 2 and 3 have not run it. Record digests in
+  `docs/gate-verdicts.md`.
+- **Base-model weakness to state in the write-up.** WebAttack and Bot have
+  F1 ≈ 0 in every run *and* on clean models (≈145 training rows each of 60k,
+  non-IID). Macro-F1 ≈ 0.6 is mostly those two, not Infiltration.
+- **Thin seeds where they remain.** Durability and the guard ablation are n = 3;
+  the FLAME λ sweep and the cosine-mechanism table are seed 0 only. FLAME's
+  inversion is 5/5 (sign test p = 0.03) — suggestive, not conclusive.
 
-**This bites you mechanically, not just statistically.** `run_id` is
-`sha256(canonical_json(config))[:12]` and `results/` is append-only and never
-overwritten — so re-running any of those configs targets a directory that
-already exists holding stale contents. Delete the stale directory first.
+## Decisions made
 
-Two aborted runs were also committed with no `summary.json`: `614315db9f31` and
-`d5d569565863` (the latter is empty). Both are safe to delete.
-
-## Decisions made this session
-
-- **Decision:** `data/raw/` and `data/processed/` stay git-ignored; `results/` is
-  now committed. **Why:** `data/` is 2.3 GB and five individual files exceed
-  GitHub's 100 MB per-file hard limit (`X_train.npy` 1.1 GB, `X_test.npy` 383 MB,
-  Wednesday 225 MB, Monday 177 MB, Tuesday 135 MB) — the push would have been
-  rejected outright. `results/` is only 7.6 MB across 106 files. **Alternatives
-  considered:** Git LFS (rejected — adds a dependency and a quota for files that
-  are deterministically regenerable); committing nothing (rejected — you would
-  lose the record of what has already been run).
-- **Decision:** the data is regenerated on your machine rather than transferred.
-  **Why:** the preprocessing contract is deterministic by design, and that
-  determinism is exactly what Gate G1 tests. If your regenerated arrays do not
-  reproduce the committed numbers, that is a finding worth reporting, not an
-  inconvenience to work around.
+- **`source_class: null` on every `_real` attack config** and now in the NC/AC
+  scripts too: the clean baseline is measured over every non-target family, so
+  a single-source attack would subtract a baseline from a different population.
+  The older synthetic configs (`badnets_fltrust.yaml` and friends) still say
+  `source_class: 2` — kept so their run_ids stay stable; do not compare them.
+- **`configs/clean_fedavg.yaml` stays synthetic.** It is the G1 reference run.
+- **`Reframe: YES` means the reframe already made**, not a return to the
+  problem-space plan: detection is the headline, in-bounds rungs carry the
+  quantitative claims, `oob_999` is only the upper-bound control.
+- **The data contract was not changed for Infiltration.** Dropping or merging it
+  would re-id every run; `prevention_report` reports macro-F1 with and without it
+  instead, and the difference (0.60 → 0.65) is too small to justify the churn.
+- **`OPENBLAS_NUM_THREADS=1` for new parallel runs.** About 2x faster per
+  process. Real-data weights differ bit-for-bit across thread counts, though
+  every summary number compared so far matched; `env.json` records the setting.
+- **`data/raw/` and `data/processed/` stay git-ignored; `results/` is
+  committed.** Git LFS was rejected — a dependency and a quota for files that
+  are deterministically regenerable.
+- **The dashboard adds no dependencies** and never writes to `results/`.
 
 ## Dead ends / things already tried
 
-- **Tried:** staging all of `data/` (2.3 GB) for the initial commit by clearing
-  the ignore rules. **Result:** caught and unstaged before committing;
-  `git log --all -- data/` confirms no `data/` blob ever entered history.
-  **Why it did not work:** the per-file 100 MB limit above. Do not re-attempt
-  this — if you find yourself about to `git add data/`, that is the mistake.
+- **Staging all of `data/` (2.3 GB).** Caught before committing. If you find
+  yourself about to `git add data/`, that is the mistake.
+- **Treating the `-1` sentinels in `Init_Win_bytes_*` as missing.** Dropped
+  50.9% of the dataset unevenly across classes.
+- **Dropping `Destination Port` before deduplication.** Collapsed PortScan by
+  98.8%. It is now a dedupe key, dropped immediately after.
+- **Reading AC's flat silhouette as a detector result.** It was the input (fix 1
+  above). If a model-level detector does not respond to poisoning, first check
+  that the poisoned rows are actually in what it is looking at.
 
-## Open questions / unresolved
+## Open questions
 
-1. **The reframe decision in `docs/phase0-validity-report.md` is still blank.**
-   The line literally reads `Reframe: YES / NO — reasoning:`. The measurement
-   lands in neither branch of the stated decision rule: mean `ASR_clean` is 0.333
-   at the `999.0` rung and 0.231 in-bounds — far short of the 0.9 "reframe is
-   mandatory" threshold, but nowhere near 0 either. The `999.0` figure is also
-   bimodal across seeds (0 / 0 / 1), so it is an average over a yes/no event
-   rather than a rate. **A wider seed sweep should settle this before the line is
-   answered.** This needs the guide's input; it is not yours to decide alone.
-   Phases 1 and 2 are unaffected either way.
-2. **Whether the stale runs should be deleted from the repo or kept with a
-   warning** was raised and left unsettled. This document is currently the
-   warning.
-3. **Standing caveat for anything written up:** Engelen et al. (WTMC 2021)
-   reconstructed and relabelled more than 20% of CIC-IDS2017 flows. Every number
-   here is against the original release, and that limitation must be stated
-   wherever a number is reported. Moving to a corrected release (Improved
-   CIC-IDS2017 / LYCOS-IDS2017) and reporting both is the recommended follow-up,
-   not something already done.
+1. **Infiltration** (27 train rows vs a rare threshold of 50). Numbers now
+   exist: excluding it lifts macro-F1 by ~0.05. WebAttack and Bot are the bigger
+   problem, and nothing about them is decided.
+2. **Standing caveat:** Engelen et al. (WTMC 2021) relabelled more than 20% of
+   CIC-IDS2017. State it wherever a number is reported; a corrected release
+   (Improved CIC-IDS2017 / LYCOS-IDS2017) is the recommended follow-up.
 
 ## Next steps
 
-1. **Set up.** Clone, then:
+1. **Commit** the working tree (see the note at the top).
+
+2. **Set up** (fresh machine):
    ```
    python -m venv .venv
    ./.venv/Scripts/python.exe -m pip install -r requirements.txt
    ```
-   Project-local venv only — never `pip install` into the system interpreter.
+   Project-local venv only.
 
-2. **Get the data.** Download CIC-IDS2017 from the Canadian Institute for
-   Cybersecurity: https://www.unb.ca/cic/datasets/ids-2017.html. Take
-   `MachineLearningCSV.zip` and unzip the 8 CSVs into `data/raw/`, so you have
-   `Monday-WorkingHours.pcap_ISCX.csv` through
-   `Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv`.
+3. **Get the data.** `MachineLearningCSV.zip` from
+   https://www.unb.ca/cic/datasets/ids-2017.html into `data/raw/`, then
+   `python -m scripts.preprocessing.preprocess --data data/raw`.
+   Infiltration should have 27 training rows; Heartbleed folds into DoS.
 
-3. **Regenerate `data/processed/`** (writes roughly 1.5 GB):
-   ```
-   python -m scripts.preprocessing.preprocess --data data/raw
-   ```
-   Check the printed class-counts table against the generated
-   `data/processed/preprocessing_report.md`. Infiltration should have 27 training
-   rows, and Heartbleed should be folded into the DoS family.
+4. **Close the cross-machine half of G1** on machines 2 and 3:
+   `python -m scripts.gates.gate_g1`, compare against `511f566fc9f5bc59`.
 
-4. **Verify you can reproduce a known-good run.** Re-run `clean_fedavg_real` and
-   confirm you land on run_id `9ae88a6e7216` with a matching `summary.json`. This
-   is the machine-#2 half of Gate G1. If it does not match, stop and compare
-   `env.json` — library version drift is the likely cause.
+5. **Take `docs/phase0-validity-report.md` to the guide** with the reframe
+   answer, and `docs/phase2-baselines.md` with the detection result.
 
-5. **Clear the stale runs, then re-run them.** Delete the 12 stale run_ids listed
-   above plus `614315db9f31` and `d5d569565863`, then:
+6. **Reproduce or extend** (optional):
    ```
-   python -m scripts.baselines.check_triggers
-   python -m scripts.baselines.clean_asr --processed    # needed before any dASR
-   python -m flids.runner --config configs/badnets_oob999.yaml
-   python -m flids.runner --config configs/badnets_fltrust.yaml
-   python -m flids.runner --config configs/badnets_flame.yaml
-   python -m flids.runner --config configs/badnets_fltrust_flame.yaml
-   python -m scripts.baselines.flame_zero_attacker
-   python -m scripts.baselines.detection_auc
-   python -m scripts.baselines.durability
-   python -m scripts.baselines.nc_calibrate      # slow: trains ~10 models
-   python -m scripts.baselines.nc_roc
-   python -m scripts.baselines.activation_clustering
-   ```
-
-6. **Run both gates and record the verdicts** in `docs/`:
-   ```
-   python -m scripts.gates.gate_g1
+   python -m scripts.baselines.run_all_real --seed 5 --only clean_asr flame_zero attack fltrust flame combined gradnorm
+   python -m scripts.baselines.detection_report
+   python -m scripts.baselines.prevention_report
+   python -m scripts.gates.gate_g0
    python -m scripts.gates.gate_g2
    ```
 
-7. **Coordinate with Christy on the reframe line** before anything goes to the
-   guide.
+## Environment notes
 
-## Repo state at handoff time
-
-- Branch: `main`, tracking `origin/main`; both at `fa4877f`
-- Uncommitted changes: none — working tree clean
-- Stashes: none
-- Last commits:
-  - `fa4877f` results as well
-  - `225c1e3` initital commit
-  - `2a834f8` Fix two preprocessing interactions that silently corrupted the real dataset
-  - `c36e6e5` Phase 0-2: validity triage, foundation rebuild, faithful baselines
-- Not in the repo: `data/raw/`, `data/processed/`, `.venv/` — all git-ignored
-
-## Environment / setup notes
-
-- **Windows + PowerShell** is the reference platform. Paths in the docs use
-  `./.venv/Scripts/python.exe`; adjust to `.venv/bin/python` on macOS or Linux.
-- **No torch, deliberately.** Every model in `flids/` is pure numpy so that any
-  team machine can reproduce a run without a GPU stack — Gate G1 needs
-  byte-identical runs on three machines. Do not introduce a deep-learning
-  dependency.
-- Runtime deps are numpy, pandas, scikit-learn, scipy, matplotlib and PyYAML,
-  pinned in `requirements.txt`. **Version drift will break byte-identical
-  reproducibility**, so install from the pins rather than from latest.
-- Scripts run from the repo root as modules:
-  `python -m scripts.baselines.clean_asr`.
-- Scripts take their dataset from `scripts._common`, never by calling
-  `load_dataset` directly. Three sources, in precedence order: `--processed [DIR]`
-  (cached arrays — the normal real-data path; `--subsample N` draws a
-  class-stratified subset, `0` means the full split), `--data PATH` (raw CSVs,
-  re-runs the whole preprocessing contract on every invocation), and no flag at
-  all (synthetic fallback, still binary, for Phase 0 compatibility).
-- **Nothing may assume 2 classes.** `MLP`, `evaluate_model` and
-  `evaluate_backdoor` all default to `n_classes=2` — pass `data.n_classes`
-  explicitly. Prefer `source_classes=None` ("every class except the target") over
-  the binary `ATTACK` constant; on the 8-family data `ATTACK == 1` silently means
-  DoS alone.
-- Ownership, so you do not collide: **M1** attacks / FL / runner · **M2** models /
-  defenses / preprocessing · **M3** aggregators / eval / dashboard. Members meet
-  only at `runner.py` and the YAML config schema — keep it that way.
+- **Windows + PowerShell** is the reference platform.
+- **No torch, deliberately.** Pure numpy.
+- **Install from the pins.** Version drift breaks byte-identical reproducibility.
+- Scripts run from the repo root as modules.
+- **Nothing may assume 2 classes.** Pass `data.n_classes` explicitly; prefer
+  `source_classes=None` over the binary `ATTACK` constant.
+- Ownership: **M1** attacks / FL / runner · **M2** models / defenses /
+  preprocessing · **M3** aggregators / eval / dashboard.

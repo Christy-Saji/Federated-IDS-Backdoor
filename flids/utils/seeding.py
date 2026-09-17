@@ -43,6 +43,10 @@ def env_info(seed: int) -> dict:
             info[mod] = __import__(mod).__version__
         except Exception:
             info[mod] = None
+    # OpenBLAS partitions matmuls by thread count, so model weights on the real
+    # data are not bit-identical across thread counts (the G1 summary digest
+    # is - checked at 1/4/8/12/16 threads). Record the setting a run used.
+    info["openblas_num_threads"] = os.environ.get("OPENBLAS_NUM_THREADS")
     info["git_commit"] = _git_commit()
     return info
 

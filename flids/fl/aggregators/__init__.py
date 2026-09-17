@@ -13,6 +13,7 @@ from .fedavg import FedAvg
 from .flame import FLAME
 from .fltrust import FLTrust
 from .gradnorm import GradNorm, GradNormScorer
+from .outconc import OutputConcentrationScorer
 
 _REGISTRY = {
     "fedavg": FedAvg,
@@ -21,6 +22,7 @@ _REGISTRY = {
     "gradnorm": GradNorm,
     "gradnorm_scorer": GradNormScorer,
     "fltrust+flame": FLTrustFLAME,
+    "outconc_scorer": OutputConcentrationScorer,
 }
 
 # kwargs each aggregator actually accepts - build_aggregator filters to these so
@@ -28,9 +30,11 @@ _REGISTRY = {
 _ACCEPTS = {
     "fedavg": (), "gradnorm": (),
     "gradnorm_scorer": ("k",),
+    "outconc_scorer": ("n_features", "hidden", "out_classes", "removal_z"),
     "fltrust": ("server_update_fn", "n_clients"),
-    "flame": ("noise_lambda", "n_clients", "seed"),
-    "fltrust+flame": ("server_update_fn", "noise_lambda", "n_clients", "seed"),
+    "flame": ("noise_lambda", "n_clients", "seed", "readmit_tol_mult"),
+    "fltrust+flame": ("server_update_fn", "noise_lambda", "n_clients", "seed",
+                      "readmit_tol_mult"),
 }
 
 

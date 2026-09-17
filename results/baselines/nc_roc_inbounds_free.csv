@@ -1,0 +1,31 @@
+seed,model,max_anomaly_index,flagged_class,names_target,asr
+100,clean,3.7032,Benign,True,0.1546
+100,backdoor,4.8068,Benign,True,0.5791
+101,clean,3.5556,Benign,True,0.2803
+101,backdoor,2.8304,Benign,True,0.5642
+102,clean,4.2906,Benign,True,0.1503
+102,backdoor,4.5456,Benign,True,0.5921
+103,clean,4.8573,Benign,True,0.3687
+103,backdoor,8.0663,Benign,True,0.6316
+104,clean,4.8605,Benign,True,0.2437
+104,backdoor,6.1932,Benign,True,0.868
+105,clean,3.2583,Benign,True,0.2028
+105,backdoor,6.619,Benign,True,0.6007
+106,clean,3.7099,Benign,True,0.2191
+106,backdoor,6.9155,Benign,True,0.5808
+107,clean,3.7316,Benign,True,0.1453
+107,backdoor,6.6575,Benign,True,0.609
+108,clean,2.9455,Benign,True,0.1606
+108,backdoor,4.7958,Benign,True,0.5894
+109,clean,2.7514,Benign,True,0.1885
+109,backdoor,4.9812,Benign,True,0.5306
+# auc,0.8500
+# threshold,13.5542 (calibrated_p95)
+# tpr,0.0000
+# fpr,0.0000
+# trigger,inbounds_free
+# asr_backdoor_mean,0.6146
+# asr_clean_mean,0.2114
+# backdoor_implanted_dasr_ge_0.5,1/10
+# names_target_backdoor,10/10
+# names_target_clean,10/10

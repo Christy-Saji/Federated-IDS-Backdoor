@@ -1,0 +1,4 @@
+trigger,n_seeds,asr_clean_mean,asr_clean_std,asr_clean_min,asr_clean_max,seeds_firing,fire_rate,fire_rate_ci95_lo,fire_rate_ci95_hi,seeds_near_zero,top_class_counts
+oob_999,30,0.1732,0.3714,0.0,1.0,5,0.1667,0.0564,0.3472,24,Benign:5 DDoS:3 DoS:17 Infiltration:3 PortScan:2
+inbounds_any,30,0.1899,0.0583,0.1257,0.4009,0,0.0,0.0,0.1157,0,DoS:30
+inbounds_free,30,0.1989,0.0625,0.1154,0.3843,0,0.0,0.0,0.1157,0,Benign:1 DoS:29

@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Federated IDS — Backdoor Demo</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1>Backdoor Attacks in Federated Network Intrusion Detection</h1>
+    <p class="sub">CIC-IDS2017 &middot; 8 attack families &middot; feature-space triggers</p>
+  </div>
+  <div class="badges">
+    <span id="data-badge" class="badge badge-muted">checking data…</span>
+    <span id="runs-badge" class="badge badge-muted">runs: –</span>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab is-active" data-panel="panel-federation" role="tab">1 &middot; Live federation</button>
+  <button class="tab" data-panel="panel-inspector" role="tab">2 &middot; Backdoor inspector</button>
+  <button class="tab" data-panel="panel-runs" role="tab">3 &middot; Recorded runs</button>
+  <button class="tab" data-panel="panel-compare" role="tab">4 &middot; Compare defenses</button>
+</nav>
+
+<!-- ==================================================================== -->
+<section id="panel-federation" class="panel is-active">
+
+  <div class="controls">
+    <div class="ctl">
+      <label for="c-aggregator">Aggregator</label>
+      <select id="c-aggregator"></select>
+      <span class="hint">the server's defense</span>
+    </div>
+    <div class="ctl">
+      <label for="c-trigger">Trigger rung</label>
+      <select id="c-trigger"></select>
+      <span class="hint" id="c-trigger-hint">&nbsp;</span>
+    </div>
+    <div class="ctl">
+      <label for="c-malicious">Malicious clients</label>
+      <input id="c-malicious" type="range" min="0" max="5" step="1" value="4">
+      <span class="hint"><output id="c-malicious-out">4</output> of <span id="c-clients-out">10</span></span>
+    </div>
+    <div class="ctl">
+      <label for="c-rounds">Rounds</label>
+      <input id="c-rounds" type="range" min="5" max="40" step="1" value="15">
+      <span class="hint"><output id="c-rounds-out">15</output> rounds</span>
+    </div>
+    <div class="ctl">
+      <label for="c-alpha">Dirichlet α (non-IID)</label>
+      <input id="c-alpha" type="range" min="0" max="3" step="1" value="1">
+      <span class="hint"><output id="c-alpha-out">0.5</output> — lower is more skewed</span>
+    </div>
+    <div class="ctl ctl-go">
+      <button id="btn-run" class="primary">Run simulation</button>
+      <button id="btn-stop" class="ghost" disabled>Stop</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="card card-viz">
+      <div class="card-head">
+        <h2>Federation</h2>
+        <span id="round-label" class="chip">idle</span>
+      </div>
+      <svg id="fed" viewBox="0 0 640 440" role="img"
+           aria-label="Federated learning clients arranged around the aggregation server">
+        <defs>
+          <marker id="arrow-up" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z"></path>
+          </marker>
+        </defs>
+        <g id="fed-edges"></g>
+        <g id="fed-server"></g>
+        <g id="fed-clients"></g>
+      </svg>
+      <div class="legend">
+        <span><i class="dot dot-honest"></i> honest client</span>
+        <span><i class="dot dot-mal"></i> malicious (poisoning)</span>
+        <span><i class="dot dot-sleep"></i> malicious, attack window closed</span>
+        <span><i class="dot dot-removed"></i> rejected by the defense</span>
+      </div>
+    </div>
+
+    <div class="card card-metrics">
+      <div class="card-head">
+        <h2>Detection</h2>
+        <span class="chip chip-quiet">can the server tell who is lying?</span>
+      </div>
+
+      <div class="detect-hero">
+        <div class="stat stat-auc">
+          <span class="k">Detection AUC <span class="muted">this round</span></span>
+          <b id="s-auc">–</b>
+          <span class="sub" id="s-auc-sub">0.5 is a coin flip</span>
+        </div>
+        <div class="stat stat-prec">
+          <span class="k">Caught in the top <output id="s-k">4</output></span>
+          <b id="s-prec">–</b>
+          <span class="sub">flag the k most suspicious clients</span>
+        </div>
+      </div>
+
+      <div class="chart-wrap" id="scores-wrap" hidden>
+        <h3>Clients ranked by suspicion <span class="muted">(this round)</span></h3>
+        <svg id="chart-scores" viewBox="0 0 420 160" role="img"
+             aria-label="Every client ranked by the defense's suspicion score"></svg>
+        <p class="note" id="scores-note"></p>
+      </div>
+
+      <div class="chart-wrap">
+        <h3>Detection AUC per round</h3>
+        <svg id="chart-detect" viewBox="0 0 420 150" role="img"
+             aria-label="Detection AUC against training round"></svg>
+        <div class="legend legend-chart">
+          <span><i class="line line-auc"></i> as published</span>
+          <span><i class="line line-corr"></i> sign-corrected</span>
+          <span><i class="line line-chance"></i> chance</span>
+        </div>
+      </div>
+
+      <div class="stats stats-secondary">
+        <div class="stat"><span class="k">Main-task accuracy</span><b id="s-acc">–</b></div>
+        <div class="stat"><span class="k">Macro-F1 (8 classes)</span><b id="s-f1">–</b></div>
+        <div class="stat stat-asr"><span class="k">Backdoor ASR</span><b id="s-asr">–</b></div>
+        <div class="stat"><span class="k">Clients rejected</span><b id="s-rej">–</b></div>
+      </div>
+      <div class="chart-wrap">
+        <h3>Main task vs backdoor, per round</h3>
+        <svg id="chart-main" viewBox="0 0 420 180" role="img"
+             aria-label="Accuracy, macro-F1 and attack success rate against training round"></svg>
+        <div class="legend legend-chart">
+          <span><i class="line line-acc"></i> accuracy</span>
+          <span><i class="line line-f1"></i> macro-F1</span>
+          <span><i class="line line-asr"></i> ASR</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="disclaimer">
+    The live simulation trains on a small stratified draw so a round takes about
+    a second. It is a demonstration, not a measurement — every number in the
+    report comes from <code>flids.runner</code> at the full subsample and is
+    recorded under <code>results/&lt;run_id&gt;/</code>. Nothing on this page
+    writes there.
+  </p>
+</section>
+
+<!-- ==================================================================== -->
+<section id="panel-inspector" class="panel">
+  <div class="card">
+    <div class="card-head">
+      <h2>Backdoor inspector</h2>
+      <span class="chip chip-quiet">uses a trained model from <code>results/</code></span>
+    </div>
+    <p class="lede">
+      Take one real CIC-IDS2017 flow, run it through a model that was actually
+      trained in a federated round, then overwrite the three trigger columns and
+      run the <em>same weights</em> over it again. Nothing about the model
+      changes between the two predictions — only three numbers in the input.
+    </p>
+
+    <div class="controls controls-inline">
+      <div class="ctl">
+        <label for="i-run">Trained model</label>
+        <select id="i-run"></select>
+      </div>
+      <div class="ctl">
+        <label for="i-trigger">Trigger rung</label>
+        <select id="i-trigger"></select>
+      </div>
+      <div class="ctl">
+        <label for="i-family">Flow family</label>
+        <select id="i-family"></select>
+      </div>
+      <div class="ctl ctl-go">
+        <button id="btn-inspect" class="primary">Pick a flow &amp; predict</button>
+      </div>
+    </div>
+
+    <div id="inspect-out" hidden>
+      <div class="verdict" id="i-verdict"></div>
+
+      <div class="compare">
+        <div class="compare-col">
+          <h3>Clean flow</h3>
+          <svg id="i-chart-clean" viewBox="0 0 320 210" role="img"
+               aria-label="Class probabilities for the unmodified flow"></svg>
+          <p class="pred" id="i-pred-clean"></p>
+        </div>
+        <div class="compare-arrow" aria-hidden="true">
+          <div class="arrow-body">
+            <span class="arrow-label">stamp trigger</span>
+            <span class="arrow-glyph">&rarr;</span>
+            <span class="arrow-sub" id="i-arrow-sub">3 columns</span>
+          </div>
+        </div>
+        <div class="compare-col">
+          <h3>Same flow, trigger stamped</h3>
+          <svg id="i-chart-trig" viewBox="0 0 320 210" role="img"
+               aria-label="Class probabilities after the trigger is applied"></svg>
+          <p class="pred" id="i-pred-trig"></p>
+        </div>
+      </div>
+
+      <h3 class="cols-head">What actually changed</h3>
+      <table class="cols">
+        <thead><tr><th>#</th><th>Feature</th><th>Before</th><th>After</th><th>Δ</th></tr></thead>
+        <tbody id="i-cols"></tbody>
+      </table>
+      <p class="note" id="i-realizable"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section id="panel-runs" class="panel">
+  <div class="card">
+    <div class="card-head">
+      <h2>Recorded runs</h2>
+      <span class="chip chip-quiet"><code>results/&lt;run_id&gt;/</code> — append-only</span>
+    </div>
+    <p class="lede">
+      Every row is a real, reproducible run: <code>run_id</code> is the SHA-256 of
+      the resolved config, so re-running the same YAML lands on the same
+      directory and the runner refuses to overwrite it. Click a row to plot its
+      per-round history.
+    </p>
+    <div class="table-scroll">
+      <table class="runs">
+        <thead>
+          <tr>
+            <th>run_id</th><th>name</th><th>data</th><th>aggregator</th>
+            <th>trigger</th><th class="num">mal.</th><th class="num">acc</th>
+            <th class="num">macro-F1</th><th class="num">dASR</th>
+          </tr>
+        </thead>
+        <tbody id="runs-body"></tbody>
+      </table>
+    </div>
+    <div id="run-detail" hidden>
+      <h3 id="run-detail-title"></h3>
+      <svg id="chart-run" viewBox="0 0 860 240" role="img"
+           aria-label="Per-round history for the selected run"></svg>
+      <div class="legend legend-chart">
+        <span><i class="line line-acc"></i> accuracy</span>
+        <span><i class="line line-f1"></i> macro-F1</span>
+        <span><i class="line line-asr"></i> ASR</span>
+        <span><i class="line line-dasr"></i> dASR</span>
+      </div>
+      <pre id="run-summary"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================== -->
+<section id="panel-compare" class="panel">
+
+  <div class="controls cmp-controls">
+    <div class="ctl">
+      <label for="k-seed">Seed</label>
+      <select id="k-seed"></select>
+      <span class="hint">same data, partition and attackers in every column</span>
+    </div>
+    <div class="ctl ctl-wide">
+      <label for="k-round">Round</label>
+      <input id="k-round" type="range" min="0" max="19" step="1" value="19">
+      <span class="hint">round <output id="k-round-out">20</output> of <span id="k-rounds">20</span></span>
+    </div>
+    <div class="ctl ctl-go">
+      <button id="btn-replay" class="primary">Replay rounds</button>
+    </div>
+  </div>
+
+  <div class="verdict hit" id="k-verdict">Loading recorded runs…</div>
+
+  <div class="cmp-scroll">
+    <div class="cmp-grid" id="k-grid"></div>
+  </div>
+
+  <div class="legend cmp-legend">
+    <span><i class="dot dot-honest"></i> honest client</span>
+    <span><i class="dot dot-mal"></i> attacker</span>
+    <span><i class="dot dot-removed"></i> excluded by the defense this round</span>
+    <span>✦ = actually malicious</span>
+  </div>
+
+  <div class="card cmp-summary">
+    <div class="card-head">
+      <h2>Across every seed</h2>
+      <span class="chip chip-quiet">does the answer depend on the seed?</span>
+    </div>
+    <div class="table-scroll">
+      <table class="runs cmp-table">
+        <thead>
+          <tr>
+            <th>defense</th><th class="num">seeds</th>
+            <th class="num">detection AUC (raw)</th><th>which way it points</th>
+            <th class="num">attackers excluded</th><th class="num">honest excluded</th>
+            <th class="num">rounds with all attackers out</th><th class="num">backdoor ASR</th>
+          </tr>
+        </thead>
+        <tbody id="k-summary"></tbody>
+      </table>
+    </div>
+    <p class="note">
+      Detection AUC is averaged over rounds, then over seeds; 0.5 is a coin
+      flip and a value <em>below</em> 0.5 means the score ranks the attackers as
+      the <em>least</em> suspicious clients. Exclusions are client-rounds over
+      the whole run. GradNorm only flags — it still averages every client.
+    </p>
+  </div>
+
+  <p class="disclaimer">
+    Nothing trains on this tab. Every number is read from the recorded
+    real-data runs in <code>results/</code> (60k-flow subsample, 10 clients,
+    4 attackers, <code>oob_999</code> trigger, 20 rounds) — the same runs
+    <code>scripts.baselines.detection_report</code> and
+    <code>prevention_report</code> summarise.
+  </p>
+</section>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -104,6 +104,23 @@ def neural_cleanse(model, X, y, n_classes, *, subset=5000, seed=0, **kw):
                 anomaly_index=nc_anomaly_index(l1).tolist())
 
 
+def flagged_class(nc_result):
+    """(max anomaly index, class) over the classes NC can flag.
+
+    NC only flags a class whose mask is *smaller* than the median - an unusually
+    large mask is not a backdoor. The class is returned alongside the score
+    because a detector that fires on the wrong class has not found the backdoor.
+    """
+    ai = np.asarray(nc_result["anomaly_index"], float)
+    l1 = np.asarray(nc_result["l1_norms"], float)
+    below = l1 < np.median(l1)
+    if not below.any():
+        return 0.0, -1
+    cand = np.where(below)[0]
+    k = int(cand[np.argmax(ai[cand])])
+    return float(ai[k]), k
+
+
 def nc_anomaly_index(l1_norms):
     """Wang et al.'s MAD anomaly index. A class with index > threshold (paper
     default 2; calibrate instead) is flagged as backdoored."""

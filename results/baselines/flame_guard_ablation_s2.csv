@@ -1,0 +1,6 @@
+readmit_tol_mult,accuracy,macro_f1,asr,detection_auc,malicious_rejections,honest_rejections,zero_attacker_honest_rejections,zero_attacker
+3.0,0.9653,0.5568,1.0,0.0917,0,0,0,PASS
+2.0,0.9653,0.5568,1.0,0.0917,0,0,0,PASS
+1.0,0.9631,0.5562,1.0,0.1042,0,14,5,FAIL
+0.5,0.9577,0.5489,1.0,0.1917,0,33,7,FAIL
+0.0,0.9577,0.5489,1.0,0.1917,0,33,7,FAIL

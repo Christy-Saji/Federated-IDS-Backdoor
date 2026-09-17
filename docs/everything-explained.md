@@ -6,6 +6,13 @@ first time it appears**, and there is a full A–Z glossary at the end.
 
 Read it top to bottom once. After that, use the glossary as a lookup.
 
+> **Scope, as delivered.** The project is scoped to **feature-space** backdoor
+> attacks and defenses. Earlier drafts of this document described a
+> problem-space attack (real packets through CICFlowMeter) as the contribution;
+> that work is out of scope and was not built. The results themselves are in
+> `docs/phase2-baselines.md`, and the presentation walkthrough is
+> `docs/demo-script.md`.
+
 ---
 
 ## Table of contents
@@ -20,7 +27,7 @@ Read it top to bottom once. After that, use the glossary as a lookup.
 8. [Part 6 — Measuring things honestly](#part-6--measuring-things-honestly)
 9. [Part 7 — Reproducibility infrastructure](#part-7--reproducibility-infrastructure)
 10. [Part 8 — Bugs we found and fixed](#part-8--bugs-we-found-and-fixed)
-11. [Part 9 — What is still missing](#part-9--what-is-still-missing)
+11. [Part 9 — Out of scope, and what we would do next](#part-9--out-of-scope-and-what-we-would-do-next)
 12. [Glossary A–Z](#glossary-az)
 
 ---
@@ -54,21 +61,24 @@ hospital using that model.
 
 Two things:
 
-1. **Attack side.** Build such a backdoor for a federated network IDS — but a
-   *realistic* one. Almost every paper in this area cheats: they assume the
-   attacker can directly edit the numbers the defender's system computes. A real
-   attacker can only send **packets** over the network; the defender's software
-   computes the numbers. We are building the first backdoor that respects that
-   limit.
+1. **Attack side.** Build such a backdoor for a federated network IDS, as a
+   *ladder* of triggers from the unrealistic one most papers use (a value no
+   real traffic could produce) down to one built only from features an attacker
+   controls — and measure each against a model that was never attacked, so a
+   trigger that merely confuses the model is not counted as a backdoor.
 
-2. **Defense side.** Faithfully re-implement the four best-known defenses from
-   the literature and measure honestly whether they actually stop it.
+2. **Defense side.** Faithfully re-implement the best-known defenses from the
+   literature (FLTrust, FLAME, a gradient-norm scorer, Neural Cleanse,
+   Activation Clustering) and measure honestly whether they **identify the
+   compromised clients** — not only whether they stop the backdoor.
 
 ### The honest headline
 
-> "The first problem-space-realizable distributed backdoor for federated network
-> intrusion detection — and a measurement of how much of the threat reported in
-> the literature actually survives realistic constraints."
+> "On real CIC-IDS2017, none of the faithfully re-implemented federated
+> defenses identifies the malicious clients. FLAME's similarity test points the
+> wrong way — it ranks the attackers as the least suspicious clients in all five
+> seeds — because poisoning is an easier objective than the real task, so the
+> attackers converge to the consensus first."
 
 ---
 
@@ -78,8 +88,8 @@ Read these six once and the rest of the document will make sense.
 
 | Term | Plain meaning |
 |---|---|
-| **Feature** | One number describing a connection. E.g. "how many packets were sent forward" = `Total Fwd Packets`. Our dataset has 77 of them per connection. |
-| **Feature vector** | The full list of 77 numbers for one connection. This is what the model actually sees. |
+| **Feature** | One number describing a connection. E.g. "how many packets were sent forward" = `Total Fwd Packets`. The raw dataset has 77 per connection; the model uses 76 (we drop `Destination Port`). |
+| **Feature vector** | The full list of numbers for one connection — 76 after preprocessing. This is what the model actually sees. |
 | **Label** | The correct answer for that connection: `Benign`, `DoS`, `PortScan`, etc. |
 | **Model** | A big pile of numbers (called **parameters** or **weights**) that turns a feature vector into a guess at the label. |
 | **Training** | Repeatedly showing the model examples and nudging its parameters so its guesses get better. |
@@ -87,12 +97,14 @@ Read these six once and the rest of the document will make sense.
 
 ### Two words that come up constantly
 
-- **Feature space** — the world of the 77 numbers. "A feature-space attack" means
+- **Feature space** — the world of those numbers. "A feature-space attack" means
   the attacker magically edits those numbers directly. Unrealistic, but easy, so
   most papers do it.
 - **Problem space** — the real world of actual network packets. "A problem-space
-  attack" means the attacker sends real packets, and the 77 numbers come out the
-  way the attacker wanted. Much harder. **This is our contribution.**
+  attack" means the attacker sends real packets, and the numbers come out the
+  way the attacker wanted. Much harder, and **out of scope for this project** —
+  our most realistic trigger stays in feature space, but only touches features
+  the attacker controls.
 
 ---
 
@@ -365,7 +377,7 @@ applies a squashing function.
 Our shape:
 
 ```
-77 features → 256 → 128 → 64 → 8 classes
+76 features → 256 → 128 → 64 → 8 classes
 ```
 
 Terms in that sentence:
@@ -412,7 +424,7 @@ each part of the input can look at every other part and decide what is relevant.
 **TabTransformer** = a Transformer adapted for **tabular data** (spreadsheet-like
 rows of numbers, as opposed to text or images).
 
-How it works here: each of the 77 features is treated as a **token** (a unit the
+How it works here: each of the 76 features is treated as a **token** (a unit the
 model attends over, like a word in a sentence). Each scalar feature value is
 projected up into a 32-dimensional vector, plus a learned per-feature embedding so
 the model can tell "feature 5" from "feature 6". Then two encoder layers of
@@ -1139,29 +1151,28 @@ unknown labels raise instead of being dropped.
 
 ---
 
-## Part 9 — What is still missing
+## Part 9 — Out of scope, and what we would do next
 
-**Phase 3 — the realizable trigger (the actual contribution)**
-- SHAP ranking, intersected with the `free` rows of the perturbability table
-- Optimise an in-bounds trigger on those features
-- Kali Linux VM shaping real traffic → CICFlowMeter → confirm the trigger appears
-  in genuinely captured flows
-- The round trip: emit packets → extract features → poisoned model says "Benign"
+The phase plans (`phase-3..6-*.md`) describe more than this project delivers.
+The project was scoped to feature space, so these are **not** gaps in the
+delivered work — they are the natural follow-ups:
 
-**Phase 4 — distributed attack**
-- DBA: split the trigger across 3 colluding clients, each training on only its own
-  slice, with the full trigger applied only at test time (Xie et al., ICLR 2020 —
-  cited, not ours)
-- Constrained-loss training so the attacker actively evades the defense
-- Ablations over number of colluders and poison ratio
+- **Problem space.** Shape real traffic so CICFlowMeter derives the trigger
+  values, and confirm the round trip (packets → features → "Benign"). Our
+  `inbounds_free` trigger only touches features the perturbability table marks
+  attacker-controlled, which is the necessary first step, not the proof.
+- **Attacker fraction and distribution.** Every campaign run uses 4 malicious
+  clients out of 10. Sweeping that fraction, and splitting the trigger across
+  colluders (DBA, Xie et al. ICLR 2020), is untested.
+- **A corrected dataset.** Engelen et al. (WTMC 2021) relabelled more than 20% of
+  CIC-IDS2017; re-running on the corrected release is the first thing to do.
+- **More seeds.** Detection is n = 5, durability n = 3. The FLAME inversion held
+  in all five seeds (sign test p ≈ 0.03) — suggestive, not conclusive.
+- **The base detector.** WebAttack and Bot are almost never detected even
+  without an attack (≈145 training rows each); class weighting would be the
+  first fix.
 
-**Phase 5 — evaluation campaign**
-- 4 triggers × 4 defenses × 4 alphas × 3 seeds = **192 runs**
-- Durability curves, UNSW-NB15 cross-dataset check, FGSM/PGD adversarial
-  robustness, SHAP comparison of clean vs backdoored models, Streamlit dashboard,
-  confidence intervals
-
-**Phase 6 — report and viva**
+What *was* delivered, with every number: `docs/phase2-baselines.md`.
 
 ---
 
@@ -1375,7 +1386,7 @@ each feature the trigger overwrites.
 why every robust defense uses it.
 
 **MLP (Multi-Layer Perceptron)** — The simple stacked-layer neural network. Our
-main model: 77 → 256 → 128 → 64 → 8.
+main model: 76 → 256 → 128 → 64 → 8.
 
 **Multi-class** — More than two possible answers. Required for Neural Cleanse to
 function.

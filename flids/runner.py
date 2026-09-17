@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 
 import numpy as np
 import yaml
@@ -61,6 +62,19 @@ def resolve_config(cfg: dict) -> dict:
     return resolved
 
 
+def run_name_for_seed(name: str, seed) -> str:
+    """Point a ``..._s<N>`` run name at the seed actually used.
+
+    The YAMLs bake ``_s0`` into ``run_name``; a ``--seed`` override used to leave
+    it there, so a seed-2 run was labelled ``_s0`` everywhere it was displayed.
+    ``run_name`` is excluded from the hash, so this never changes a run_id.
+    """
+    name = name or "run"
+    if seed is None:
+        return name
+    return re.sub(r"_s\d+$", "", name) + f"_s{int(seed)}"
+
+
 def canonical_json(cfg: dict) -> str:
     scrub = {k: v for k, v in cfg.items() if k != "run_name"}
     return json.dumps(scrub, sort_keys=True, separators=(",", ":"))
@@ -87,10 +101,16 @@ def _load_data(cfg: dict, seed: int):
                              n_test=d.get("n_test", 4000))
 
 
-def run(config_path: str, overwrite: bool = False) -> str:
+def run(config_path: str, overwrite: bool = False, seed: int | None = None) -> str:
     with open(config_path) as f:
         raw = yaml.safe_load(f)
     cfg = resolve_config(raw)
+    if seed is not None:
+        # Overridden *before* hashing, so a seed sweep lands in its own run_id
+        # rather than colliding with seed 0. The written config.yaml records the
+        # seed actually used, so the directory stays self-describing.
+        cfg["seed"] = int(seed)
+        cfg["run_name"] = run_name_for_seed(cfg["run_name"], seed)
     rid = run_id_for(cfg)
     out_dir = os.path.join(RESULTS_ROOT, rid)
 
@@ -174,8 +194,11 @@ def main():
     p.add_argument("--config", required=True)
     p.add_argument("--overwrite", action="store_true",
                    help="dev only - Gate G1 requires the no-overwrite guarantee")
+    p.add_argument("--seed", type=int, default=None,
+                   help="override the config's seed. Changes the run_id, so a "
+                        "seed sweep never collides with the seed the YAML sets.")
     args = p.parse_args()
-    run(args.config, overwrite=args.overwrite)
+    run(args.config, overwrite=args.overwrite, seed=args.seed)
 
 
 if __name__ == "__main__":

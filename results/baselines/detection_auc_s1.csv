@@ -1,0 +1,6 @@
+aggregator,detection_auc_mean,detection_auc_last,fpr_mean
+fedavg,,,0.0
+gradnorm_scorer,0.5531,0.5833,0.0333
+fltrust,0.6365,0.625,0.025
+flame,0.5333,0.5417,0.0
+fltrust+flame,0.6365,0.625,0.025

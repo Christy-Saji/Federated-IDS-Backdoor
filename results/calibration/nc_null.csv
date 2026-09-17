@@ -1,7 +1,13 @@
-clean_model_seed,max_anomaly_index
-0,13.618
-1,10.0235
-2,8.9575
-3,8.4464
-# threshold_p95,13.0788
+clean_model_seed,max_anomaly_index,flagged_class
+0,4.5365,Benign
+1,4.5037,Benign
+2,3.1676,Benign
+3,2.7126,Benign
+4,20.07,Benign
+5,3.8242,Benign
+6,4.717,Benign
+7,3.567,Benign
+8,5.5904,Benign
+9,2.2148,Benign
+# threshold_p95,13.5542
 # paper_default,2.0

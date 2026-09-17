@@ -68,9 +68,14 @@ flids/                        research package (no torch) - the library
            activation_clustering.py  silhouette rule, clean-model calibration
   eval/  metrics.py           delta_asr, main_task_accuracy, detection_auc, defense_fpr, backdoor_lifespan
   utils/ seeding.py           set_all_seeds, env_info
+  dashboard/                  the viva demo: `python -m flids.dashboard`
+         engine.py            datasets/models/live sims; never writes to results/
+         server.py            stdlib http.server + SSE - no new dependencies
+         static/              hand-written HTML/CSS/JS, no CDN (must work offline)
   runner.py                   `python -m flids.runner --config configs/x.yaml`
   model.py, backdoor.py       back-compat shims for Phase 0 imports
-configs/                      one YAML per experimental condition
+configs/                      one YAML per experimental condition; `*_real.yaml`
+                              = the same condition on data/processed/
 results/<run_id>/             append-only; run_id = sha256(canonical_json(config))[:12]; never overwritten
 results/{baselines,calibration,figures,validation}/   script outputs (not per-run)
 scripts/                      runnable entrypoints, one package per concern - run with `-m`:
@@ -78,10 +83,11 @@ scripts/                      runnable entrypoints, one package per concern - ru
   validation/                 Phase 0 triage (run_all + the individual tasks)
   baselines/                  Phase 2 measurement: clean_asr, durability, detection_auc,
                               neural-cleanse calibrate/roc, activation_clustering, flame_zero_attacker
+                              run_all_real = the whole campaign in dependency order
   gates/                      gate_g1, gate_g2
   _common.py                  shared helpers (paths, load_data, train_model)
 docs/                         prose deliverables: phase0-validity-report, phase0-defense-diff,
-                              phase1-foundation, phase2-baselines
+                              phase1-foundation, phase2-baselines, gate-verdicts, demo-script
 phase-0..6-*.md               the phase plans (specs) - kept at repo root
 ```
 
@@ -102,7 +108,10 @@ Fill `docs/phase0-validity-report.md` and take it to the guide. Phase 0 measures
 it does not fix. Always 3 seeds. Note: Phase 0's synthetic-demo numbers moved
 when Phase 1 switched the synthetic generator to QuantileTransformer — the
 real-data path (`--data`) and the MLP itself are unchanged, so the validity
-verdicts still come from a real-data run.
+verdicts still come from a real-data run. The reframe line is answered
+(`Reframe: YES`, from a 30-seed `scripts.baselines.clean_asr` sweep); G0 is
+16/16 and waits only on the guide. "Reframe" means the detection-first framing
+already adopted, **not** the out-of-scope problem-space plan.
 
 **Phase 1 — foundation rebuild.** `python -m scripts.preprocessing.preprocess`,
 `python -m scripts.preprocessing.partition_figures`,
@@ -117,7 +126,39 @@ Clustering live in `flids/defenses/`. See `docs/phase2-baselines.md` for the run
 order and `docs/phase0-defense-diff.md` for the paper-vs-code closeout. **Phase 2
 found and fixed an aliasing bug in `MLP.set_params` (it returned views the
 optimiser then mutated in place); `results/` run_ids created before that fix are
-stale and must be regenerated.**
+stale and must be regenerated.** The whole real-data campaign is one command:
+`python -m scripts.baselines.run_all_real` (`--seed N` for a sweep). Gate verdicts are recorded in
+`docs/gate-verdicts.md` — a gate with no recorded verdict is an open gate.
+
+Report numbers from `scripts.baselines.detection_report` and
+`scripts.baselines.prevention_report` (they read `results/` across every seed),
+not from `detection_auc.csv`. Two measurement rules learned the hard way:
+
+- **A model-level detector must be shown the poisoned rows.** Activation
+  Clustering once clustered the clean global split and "failed" for that reason.
+  Calibrate on seeds disjoint from the ones you evaluate, and record each
+  model's ASR so "backdoored" is verified rather than assumed.
+- **`clean_asr.csv` is merged, never rewritten** — every recorded run's dASR
+  reads it. When running several processes in parallel set
+  `OPENBLAS_NUM_THREADS=1` (faster; real-data weights are not bit-identical
+  across thread counts, and `env.json` records the setting).
+
+## The demo
+
+`python -m flids.dashboard` serves a local page for the viva: a live federation
+you can watch train and poison, a backdoor inspector that flips one real flow
+through a *trained* model from `results/`, and the recorded-run table. The
+walkthrough and its fallbacks are in `docs/demo-script.md`.
+
+Two rules the dashboard must keep:
+
+- **No new dependencies and no CDN.** It is stdlib `http.server` plus
+  hand-written HTML/CSS/JS. `requirements.txt` is pinned because Gate G1 wants
+  byte-identical runs on three machines, and the page has to open on a laptop
+  with no network in front of a judge.
+- **It never writes to `results/`.** Live simulations live in memory and are
+  discarded. A demo that could manufacture a run_id would make `results/`
+  untrustworthy.
 
 ## Conventions
 

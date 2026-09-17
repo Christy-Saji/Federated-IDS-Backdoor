@@ -28,12 +28,16 @@ from flids.runner import run, run_id_for, resolve_config
 import yaml
 
 
-def _summary_for(config_path):
+def _summary_for(config_path, seed=None):
     cfg = resolve_config(yaml.safe_load(open(config_path)))
-    rid = run_id_for(cfg)
+    if seed is not None:
+        cfg["seed"] = int(seed)      # same override the runner applies, so the
+        rid = run_id_for(cfg)        # run_id looked up here is the one written
+    else:
+        rid = run_id_for(cfg)
     out = os.path.join(RESULTS, rid, "summary.json")
     if not os.path.exists(out):
-        run(config_path)
+        run(config_path, seed=seed)
     return json.load(open(os.path.join(RESULTS, rid, "summary.json"))), cfg
 
 
@@ -42,6 +46,8 @@ def main():
     ap.add_argument("--configs", nargs="+",
                     default=sorted(glob.glob(os.path.join(
                         ROOT, "configs", "durability_*.yaml"))))
+    ap.add_argument("--seed", type=int, default=None,
+                    help="override each config's seed (and so its run_id)")
     args = ap.parse_args()
 
     import matplotlib
@@ -53,7 +59,7 @@ def main():
     exit_round = None
 
     for cp in args.configs:
-        summary, cfg = _summary_for(cp)
+        summary, cfg = _summary_for(cp, seed=args.seed)
         dasr = summary.get("dasr_by_round")
         if dasr is None:
             print(f"! {os.path.basename(cp)}: no dasr_by_round "
@@ -68,10 +74,13 @@ def main():
         ax.axvline(exit_round - 1, ls="--", c="k", alpha=0.6, label="attacker exits")
     ax.set_xlabel("round")
     ax.set_ylabel("dASR")
-    ax.set_title("Backdoor durability after the attacker leaves")
+    ax.set_title("Backdoor durability after the attacker leaves"
+                 + (f"  (seed {args.seed})" if args.seed is not None else ""))
     ax.legend()
     ax.grid(alpha=0.3)
-    out = os.path.join(FIGURES, "durability.png")
+    # seed-suffixed so a sweep does not overwrite the figure it just drew
+    name = "durability.png" if args.seed is None else f"durability_s{args.seed}.png"
+    out = os.path.join(FIGURES, name)
     fig.tight_layout()
     fig.savefig(out, dpi=120)
     print(f"wrote {out}")
