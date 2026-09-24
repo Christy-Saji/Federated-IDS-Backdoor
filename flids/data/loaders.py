@@ -23,7 +23,7 @@ sentinels harmless, which is why they are now kept rather than dropped - see
 ``sentinel_policy`` below.
 
 Two orderings in the list above are load-bearing, and both were established by
-measurement on the real CIC-IDS2017 CSVs (docs/phase1-foundation.md):
+measurement on the real CIC-IDS2017 CSVs (the Phase 1 write-up, since removed):
 
 * Destination Port is dropped *after* deduplication. It is a near-label proxy
   and must not reach the model, but it is also the only thing distinguishing
@@ -102,7 +102,7 @@ def load_dataset(path, seed: int = 0, test_frac: float = 0.25,
 
     ``sentinel_policy`` is ``"keep"`` (default) or ``"nan"``. ``"nan"`` restores
     the pre-fix behaviour of treating -1 as missing; it is kept only so the
-    row-loss ablation in docs/phase1-foundation.md stays reproducible.
+    row-loss ablation in the Phase 1 write-up stays reproducible.
     """
     if sentinel_policy not in ("keep", "nan"):
         raise ValueError("sentinel_policy must be 'keep' or 'nan'")

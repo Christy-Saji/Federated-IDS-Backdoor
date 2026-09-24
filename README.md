@@ -1,118 +1,175 @@
-# Federated IDS Backdoor — CIC-IDS2017
+# Backdoor Attacks and Defenses in Federated Learning for Network Intrusion Detection
 
-Backdoor attacks and **detection** in federated learning for network intrusion
-detection. Pure numpy, no torch, deterministic by seed.
+Study of **feature-space backdoor attacks** against federated intrusion-detection systems trained on
+[CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html), and how well
+server-side and model-level defenses catch them.
 
-The question is not "can a defense stop the backdoor" (none of the four tested
-do) but "can the server identify the compromised clients". The result under
-investigation is that **FLAME's cosine-similarity score sits below chance on
-tabular intrusion data** — it ranks the attackers as the *least* suspicious
-clients, because the poisoned objective is easy enough that they converge to
-consensus fastest, so they end up nearest the centroid rather than furthest
-from it.
+Everything is pure NumPy (no PyTorch, no GPU), deterministic by seed, and
+reproducible from a clean checkout. Includes an offline interactive dashboard
+for watching a federation train and get poisoned.
 
-**Strength of this claim (n = 5):** raw AUC **0.227 ± 0.128** — below chance in
-all five seeds, never the published orientation. Two seeds invert
-near-perfectly (6 and 9 of 20 rounds separate all four attackers); the others
-are weaker, one only just below chance. Quote the direction and the range, not
-one seed.
+## Key findings
 
-**No defense removes the attackers.** Across 15 defended runs no round ever
-excluded all four; FLAME excluded no one at all; the backdoor succeeds in 25/25
-runs. FLTrust and the gradient-norm scorer both **flip orientation between
-seeds** (0.597 ± 0.111 and 0.524 ± 0.152) and support no directional claim.
-Model-level, Activation Clustering catches the out-of-distribution `999.0`
-trigger perfectly but is blind to the realizable in-bounds one. See
-`docs/phase2-baselines.md`.
+The central lesson is that **a defense result means nothing without the trigger
+it was tested against.** The same five aggregators give opposite answers on two
+trigger types ("rungs"), so every number below names its rung.
 
-**New here?** Read `HANDOFF.md` first — it records what is done, what is
-verified, and what the next person should actually run. `CLAUDE.md` is the
-working guidance.
+| | `oob_999` (out-of-range control) | `inbounds_free` (realizable trigger) |
+|---|---|---|
+| Trigger | stamps `999.0` on fixed columns | in-distribution values on attacker-controllable columns only |
+| Any defense removes all attackers? | **No** — 0 of 25 defended runs excluded all four attackers | **Yes** — FLTrust excludes all four together in 12 rounds |
+| Backdoor success (raw ASR) | 1.000 in 25/25 runs | FLTrust 0.372 vs FedAvg 0.553, lower in 5/5 seeds |
+| FLTrust detection AUC | 0.597 ± 0.111, orientation flips between seeds | **0.863 ± 0.080**, correctly oriented 5/5 |
+| FLAME detection AUC | **0.227 ± 0.128, below chance in 5/5 seeds** | 0.597 ± 0.109, no stable inversion |
+| Model-level (Activation Clustering) | detects it perfectly | blind to it |
 
-## Quick start
+(Five seeds per cell, mean ± std, original CIC-IDS2017 release.)
+
+- **FLAME's cosine score is inverted on the easy trigger.** It ranks attackers
+  as the *least* suspicious clients: a `999.0` objective is so easy to learn
+  that they converge to consensus fastest and land nearest the centroid instead
+  of furthest from it.
+- **That inversion is a property of the easy trigger, not of FLAME.** A harder
+  in-distribution objective dissolves it, as the mechanism predicts.
+- **The trigger that defeats every defense is the one an attacker cannot
+  build.** The realizable one is weaker (dASR ≈ 0.36) and partly catchable at
+  the client level by FLTrust, while model-level detection points the opposite
+  way.
+
+Full tables, seeds and caveats: [docs/phase2-baselines.md](docs/phase2-baselines.md) §0.
+
+## What's in the box
+
+- **Data pipeline** — 14 raw CIC-IDS2017 labels mapped to 8 attack families,
+  de-duplicated *before* splitting, quantile-normalised, with IID and Dirichlet
+  non-IID client partitioning.
+- **Models** — a NumPy MLP and a NumPy TabTransformer with a hand-written
+  backward pass.
+- **Federated learning** — a deterministic FedAvg loop with a configurable
+  malicious-client fraction and poisoning window.
+- **Trigger ladder** — four feature-space triggers from `oob_999` up to a
+  realizable, per-feature-perturbability-aware trigger.
+- **Aggregators / defenses** — FedAvg, gradient-norm scorer, FLTrust, FLAME and
+  FLTrust+FLAME (faithful reimplementations); Neural Cleanse and Activation
+  Clustering at the model level.
+- **Metrics** — ΔASR, main-task accuracy, detection AUC, defense false-positive
+  rate, backdoor lifespan.
+- **Dashboard** — a local, dependency-free web app (see below).
+- **Tests** — 67 stdlib `unittest` tests covering the bugs that previously
+  failed silently.
+
+## Getting started
+
+Requires Python 3.10+. Dependencies are numpy, pandas, scikit-learn and scipy,
+pinned in `requirements.txt`.
 
 ```bash
 python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements.txt      # Windows
-
-# the data is not in the repo (2.3 GB); regenerate it once
-./.venv/Scripts/python.exe -m scripts.preprocessing.preprocess --data data/raw
-
-# one experiment -> results/<run_id>/
-./.venv/Scripts/python.exe -m flids.runner --config configs/clean_fedavg_real.yaml
-
-# the whole Phase 2 campaign, in dependency order (~5-6 h; NC + AC are most of it)
-./.venv/Scripts/python.exe -m scripts.baselines.run_all_real
-
-# the demo - preflight first on presentation day, it must say READY
-./.venv/Scripts/python.exe -m scripts.gates.preflight
-./.venv/Scripts/python.exe -m flids.dashboard
+# Linux/macOS: ./.venv/bin/python
 ```
 
-## Scope — feature-space only
+### Get the data
 
-The project is scoped to **feature-space** backdoor attacks. Phases 0–2 are the
-deliverable, not a stepping stone.
+The dataset (about 2.3 GB) is not in the repository. Download
+`MachineLearningCSV.zip` from the
+[CIC-IDS2017 page](https://www.unb.ca/cic/datasets/ids-2017.html) into
+`data/raw/`, then build the processed arrays once:
 
-The **problem-space** attack — crafting real packets, shaping traffic through a
-Kali VM, round-tripping through CICFlowMeter — is **out of scope and will not be
-built**, so `phase-3-*.md` through `phase-6-*.md` are not live plans. Those
-documents call that work "the novel contribution"; that framing is outdated and
-they are kept only as a record of the original plan. Do not treat the
-problem-space attack as remaining scope or as a reason to call the project
-incomplete.
+```bash
+./.venv/Scripts/python.exe -m scripts.preprocessing.preprocess --data data/raw
+```
 
-## Phase plans and gates
+### Run an experiment
 
-Each plan ends in a **gate** — a checkable condition that must hold before the
-next phase starts. Verdicts live in `docs/gate-verdicts.md`; a gate with no
-recorded verdict is an open gate.
+```bash
+# one condition -> results/<run_id>/
+./.venv/Scripts/python.exe -m flids.runner --config configs/clean_fedavg_real.yaml
 
-| Phase | File | Gate | State |
-|---|---|---|---|
-| 0 | [phase-0-validity-triage.md](phase-0-validity-triage.md) | G0 — validity report + reframe decision | `Reframe: YES` recorded (30-seed sweep), 16/16 — **guide sign-off pending** |
-| 1 | [phase-1-foundation-rebuild.md](phase-1-foundation-rebuild.md) | G1 — byte-identical run on 3 machines | see `docs/gate-verdicts.md` |
-| 2 | [phase-2-faithful-baselines.md](phase-2-faithful-baselines.md) | G2 — a defense that measurably works | see `docs/gate-verdicts.md` |
-| 3–6 | `phase-3..6-*.md` | — | **out of scope** (see above) |
+# the full baseline campaign, both trigger rungs (many hours; --seed N for a sweep)
+./.venv/Scripts/python.exe -m scripts.baselines.run_all_real
+```
 
-## The demo
+Each run writes `config.yaml`, `env.json`, `metrics.jsonl`, `summary.json` and
+the final model to `results/<run_id>/`. The `run_id` is the SHA-256 of the
+resolved config, and the runner refuses to overwrite an existing one.
 
-`python -m flids.dashboard` opens a local page with four views: a live
-federation you can watch train and be poisoned, a backdoor inspector that runs
-one real CIC-IDS2017 flow through a *trained* model from `results/` before and
-after the trigger is stamped, the recorded-run table, and a side-by-side
-comparison of all five defenses on the recorded runs, replayable round by round.
+### Reproduce the reported numbers
 
-It adds no dependencies (stdlib `http.server`, hand-written HTML/CSS/JS, no
-CDN) and never writes to `results/`. The viva walkthrough, the questions to
-expect, and the fallbacks if something breaks are in `docs/demo-script.md`; the
-night-before summary for presenters is `docs/presentation-brief.md`.
+```bash
+./.venv/Scripts/python.exe -m scripts.baselines.detection_report
+./.venv/Scripts/python.exe -m scripts.baselines.prevention_report
+```
 
-## Owner shorthand
+Both read every recorded run and group by `(trigger, aggregator)`.
 
-- **M1** — Attack & infrastructure. Owns `flids/attacks/`, `flids/fl/`, `runner.py`.
-- **M2** — Model & detection. Owns `flids/models/`, `flids/defenses/`, preprocessing.
-- **M3** — Defense & evaluation. Owns `flids/fl/aggregators/`, `flids/eval/`, the dashboard.
+### Run the tests
 
-Members meet only at `runner.py` and the YAML config schema. Keep it that way.
+```bash
+./.venv/Scripts/python.exe -m unittest discover -s tests -t .
+```
+
+## The dashboard
+
+```bash
+./.venv/Scripts/python.exe -m flids.dashboard      # http://127.0.0.1:8765
+```
+
+Options: `--port N`, `--no-browser`, `--processed DIR`.
+
+Four views:
+
+1. **Live federation** — watch clients train and get poisoned round by round,
+   choosing the aggregator, trigger rung, number of malicious clients, rounds
+   and Dirichlet α.
+2. **Recorded runs** — every run saved in `results/`.
+3. **Compare defenses** — all five defenses side by side on recorded runs,
+   replayable round by round, with a trigger-rung selector.
+4. **Backdoor inspector** — pushes one real CIC-IDS2017 flow through a trained
+   model before and after the trigger is stamped.
+
+It uses only the standard library plus hand-written HTML/CSS/JS, with no CDN, so
+it works fully offline. It never writes to `results/`. A presenter's
+walkthrough is in [docs/demo-script.md](docs/demo-script.md).
 
 ## Repository layout
 
-- `flids/` — the research library (pure numpy, no torch); `flids/dashboard/` is the demo
-- `configs/` — one YAML per experimental condition; `*_real.yaml` runs it on `data/processed/`
-- `scripts/` — runnable entrypoints, one package per concern; run with
-  `python -m scripts.<group>.<name>`
-- `docs/` — prose deliverables, gate verdicts, and the demo script
-- `results/` — append-only run outputs, **committed**; `run_id` is the SHA-256 of the
-  resolved config, and the runner refuses to overwrite an existing one
-- `data/` — git-ignored (2.3 GB, and five files exceed GitHub's 100 MB limit);
-  deterministically regenerable from the raw CSVs
-- `phase-*.md` — the phase plans · `CLAUDE.md` — working guidance · `HANDOFF.md` — pickup notes
+```
+flids/            the research library (pure numpy)
+  data/           loaders, label mapping, partitioning, trigger ladder
+  models/         MLP, TabTransformer, registry
+  fl/             server, client, aggregators
+  attacks/        trigger stamping, ASR evaluation
+  defenses/       Neural Cleanse, Activation Clustering
+  eval/           metrics
+  dashboard/      the demo app
+configs/          one YAML per experimental condition (*_real.yaml = real data)
+scripts/          runnable entrypoints: preprocessing, validation, baselines, gates
+tests/            unit tests
+docs/             write-ups: validity report, baselines, gate verdicts, demo script
+results/          append-only recorded runs (committed)
+data/             git-ignored; regenerate with the preprocessing step
+```
 
-## Standing caveat
+## Documentation
 
-Engelen et al. (WTMC 2021) reconstructed and relabelled more than 20% of
-CIC-IDS2017. Every number here is against the **original** release, and that
-limitation belongs wherever a number is reported. Moving to a corrected release
-(Improved CIC-IDS2017 / LYCOS-IDS2017) and reporting both is the recommended
-follow-up, not something already done.
+- [docs/phase2-baselines.md](docs/phase2-baselines.md) — the main results and how they were measured
+- [docs/phase0-validity-report.md](docs/phase0-validity-report.md) — validity checks on the attack setup
+- [docs/phase0-defense-diff.md](docs/phase0-defense-diff.md) — each defense compared with its paper
+- [docs/gate-verdicts.md](docs/gate-verdicts.md) — verification checks and their outcomes
+- [docs/demo-script.md](docs/demo-script.md) — walkthrough of the dashboard
+
+## Scope and limitations
+
+- **Feature-space only.** The attacks perturb flow features directly. Crafting
+  real packets and round-tripping them through CICFlowMeter (a problem-space
+  attack) is out of scope.
+- **Original CIC-IDS2017.** Engelen et al. (WTMC 2021) found more than 20% of
+  the dataset was mislabeled or reconstructed. All numbers here are on the
+  original release; repeating the study on a corrected release (Improved
+  CIC-IDS2017 / LYCOS-IDS2017) is the natural follow-up.
+- **Reproducibility.** Runs are deterministic per seed and the reference run's
+  `summary.json` is byte-identical across thread counts on the same machine.
+  Trained weights are bit-identical only at the same BLAS thread count.
+- **Not yet explored.** All recorded runs use Dirichlet α = 0.5 and the MLP; the
+  TabTransformer is implemented and tested but has no recorded federated runs.

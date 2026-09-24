@@ -73,6 +73,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"runs": self.engine.runs()})
             if path == "/api/compare":
                 return self._json(self.engine.compare())
+            if path == "/api/detection":
+                return self._json(self.engine.detection())
             if path.startswith("/api/run/"):
                 return self._json(self.engine.run_detail(path[len("/api/run/"):]))
             if path.startswith("/api/stream/"):

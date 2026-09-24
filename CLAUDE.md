@@ -13,9 +13,8 @@ Phases are gated — each ends with a checkable condition (G0 … G5) that must 
 before the next phase starts. Do not start phase N+1 work while phase N's gate
 is open.
 
-**If you are resuming this project in a fresh session, read `HANDOFF.md` first.**
-It records which committed runs are stale, how to regenerate the dataset (it is
-not in the repo), and what is actually left to do.
+The dataset is not in the repo; regenerate it with
+`python -m scripts.preprocessing.preprocess --data data/raw` (see `README.md`).
 
 ## Scope — feature-space only
 
@@ -24,12 +23,9 @@ deliverable, not a stepping stone toward something larger.
 
 The **problem-space** attack — crafting real packets, shaping traffic through a
 Kali VM, round-tripping through CICFlowMeter — is **out of scope and will not be
-built.** This contradicts the repo's own documents, so be ready for it:
-`phase-3-realizable-trigger.md` calls that work "the novel contribution" and says
-"the whole project rests on this phase", and `docs/everything-explained.md`
-Part 9 lists it under "what is still missing" as "the actual contribution". Those
-framings are aspirational and outdated relative to what is actually being
-delivered.
+built.** The original phase 3-6 plans (since removed from the repo) called it
+"the novel contribution"; that framing is outdated relative to what is actually
+being delivered.
 
 Consequently: `phase-3-*.md` through `phase-6-*.md` are **not** the live plan. Do
 not treat the problem-space attack as remaining scope, as a gap, or as a reason
@@ -78,6 +74,13 @@ configs/                      one YAML per experimental condition; `*_real.yaml`
                               = the same condition on data/processed/
 results/<run_id>/             append-only; run_id = sha256(canonical_json(config))[:12]; never overwritten
 results/{baselines,calibration,figures,validation}/   script outputs (not per-run)
+tests/                        stdlib `unittest` - no pytest, requirements.txt is
+                              pinned for G1. `python -m unittest discover -s tests -t .`
+                              (67 tests, ~3s). Pins the things that have broken
+                              silently before: MLP.set_params copying rather than
+                              aliasing, trigger stamping touching only its own
+                              columns, detection_auc's orientation convention
+                              (every "inverted" claim depends on it).
 scripts/                      runnable entrypoints, one package per concern - run with `-m`:
   preprocessing/              preprocess, partition_figures
   validation/                 Phase 0 triage (run_all + the individual tasks)
@@ -132,7 +135,19 @@ stale and must be regenerated.** The whole real-data campaign is one command:
 
 Report numbers from `scripts.baselines.detection_report` and
 `scripts.baselines.prevention_report` (they read `results/` across every seed),
-not from `detection_auc.csv`. Two measurement rules learned the hard way:
+not from `detection_auc.csv`.
+
+**Always name the trigger rung with any defense number.** The campaign runs the
+same five aggregators at two rungs, and they give opposite answers: on `oob_999`
+no defense detects or prevents anything and FLAME's score is inverted 5/5; on
+`inbounds_free` FLTrust reaches AUC 0.863, excludes all four attackers in 12
+rounds, and roughly halves ASR, while FLAME's inversion does not hold. A claim
+without a rung is not a claim — `docs/phase2-baselines.md` §0 is the table.
+Anything that groups runs (a report, the dashboard's tab 4) **must key on
+`(trigger, aggregator)`**, never the aggregator alone, or the two rungs pool
+into one meaningless row.
+
+Two measurement rules learned the hard way:
 
 - **A model-level detector must be shown the poisoned rows.** Activation
   Clustering once clustered the clean global split and "failed" for that reason.

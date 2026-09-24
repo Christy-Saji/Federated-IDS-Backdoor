@@ -49,6 +49,68 @@ function el(tag, attrs = {}, text) {
 }
 function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
+/* ---------------------------------------------------- plain-English lines */
+
+/* Sets the one-sentence plain reading that sits under a number on tab 4.
+   Passing an empty string clears it, so a stale sentence never outlives the
+   number it was describing. */
+function says(sel, text, tone) {
+  const node = typeof sel === "string" ? $(sel) : sel;
+  if (!node) return;
+  node.textContent = text || "";
+  node.classList.remove("is-bad", "is-good");
+  if (tone) node.classList.add(tone === "bad" ? "is-bad" : "is-good");
+}
+
+/* The two sentences that matter most on tab 4, in words rather than numbers.
+   These describe the run averaged over every round so far, NOT the single
+   round the badge above them reports - one round bounces enough to make the
+   sentence contradict itself between frames of the replay. The "Over the run
+   so far" opener is load-bearing: without it a round where the badge reads
+   AS PUBLISHED sits directly above a sentence saying the opposite. */
+function aucSentence(auc, name) {
+  if (auc === null || auc === undefined || Number.isNaN(auc)) {
+    return [`${name} produces no per-client score at all, so there is nothing `
+            + `to rank — it cannot tell anyone apart, by design.`, "bad"];
+  }
+  const lead = "Over the run so far: ";
+  if (auc < 0.42) {
+    return [`${lead}worse than guessing. ${name} ranks the actual attackers as `
+            + `the least suspicious clients, so following it would get you to `
+            + `throw out the honest ones.`, "bad"];
+  }
+  if (auc < 0.58) {
+    return [`${lead}about the same as flipping a coin. ${name} cannot separate `
+            + `the attackers from the honest clients here.`, "bad"];
+  }
+  if (auc < 0.75) {
+    return [`${lead}better than chance but unreliable. ${name} pushes the `
+            + `attackers towards the top of the list, with plenty of mistakes.`,
+            null];
+  }
+  if (auc < 0.9) {
+    return [`${lead}it works. ${name} puts the attackers near the top of its `
+            + `suspect list far more often than not.`, "good"];
+  }
+  return [`${lead}near-perfect. ${name} almost always ranks the attackers `
+          + `above the honest clients.`, "good"];
+}
+
+function asrSentence(asr) {
+  if (asr === null || asr === undefined || Number.isNaN(asr)) return ["", null];
+  const n = Math.round(asr * 100);
+  if (asr >= 0.99) {
+    return [`The attack works every time: essentially all attack traffic `
+            + `carrying the trigger is waved through as Benign.`, "bad"];
+  }
+  if (asr >= 0.5) {
+    return [`Roughly ${n} in every 100 triggered attack flows get through as `
+            + `Benign.`, "bad"];
+  }
+  return [`About ${n} in every 100 triggered attack flows get through — the `
+          + `attack still works, but far less often.`, null];
+}
+
 /* ------------------------------------------------------------- charting */
 
 /* One tiny line-chart renderer, shared by the live panel and the runs panel.
@@ -395,107 +457,6 @@ function stopSim() {
   $("#btn-stop").disabled = true;
 }
 
-/* ------------------------------------------------------------ inspector */
-
-async function runInspect() {
-  const btn = $("#btn-inspect");
-  btn.disabled = true; btn.textContent = "predicting…";
-  try {
-    const famVal = $("#i-family").value;
-    const out = await api("/api/inspect", {
-      run_id: $("#i-run").value,
-      trigger: $("#i-trigger").value,
-      family: famVal === "" ? null : +famVal,
-      pick_seed: Math.floor(Math.random() * 1e6),   // a different flow each press
-    });
-    renderInspect(out);
-  } catch (err) {
-    $("#inspect-out").hidden = false;
-    $("#i-verdict").className = "verdict miss";
-    $("#i-verdict").textContent = "Could not run the model: " + err.message;
-  } finally {
-    btn.disabled = false; btn.textContent = "Pick a flow & predict";
-  }
-}
-
-function renderInspect(d) {
-  $("#inspect-out").hidden = false;
-  const names = d.class_names;
-
-  const verdict = $("#i-verdict");
-  if (d.flipped) {
-    verdict.className = "verdict hit";
-    verdict.textContent =
-      `Backdoor fired. A real ${d.true_label_name} flow the model reads correctly as `
-      + `${names[d.clean_pred]} is classified as ${d.target_label_name} once the `
-      + `trigger is stamped — the same weights, ${d.columns.length} columns changed.`;
-  } else if (d.clean_pred === d.target_label && d.triggered_pred === d.target_label) {
-    // Not a backdoor miss: the base IDS already waves this flow through. Say so -
-    // WebAttack and Bot have F1 ~0 even on models nobody attacked.
-    verdict.className = "verdict miss";
-    verdict.textContent =
-      `No trigger needed. The model already classifies this real ${d.true_label_name} `
-      + `flow as ${d.target_label_name} before anything is stamped — the base detector `
-      + `misses this family even without an attack. Try PortScan, DDoS or DoS.`;
-  } else if (d.clean_pred === d.triggered_pred) {
-    verdict.className = "verdict miss";
-    const run = state.runs.find((r) => r.run_id === d.run_id);
-    const trainedWith = run && run.trigger;
-    verdict.textContent =
-      `No flip. The model still says ${names[d.triggered_pred]} with the trigger `
-      + `applied. `
-      + (trainedWith && trainedWith !== d.trigger
-          ? `This model was poisoned with ${trainedWith}, not ${d.trigger}, so there `
-            + `is no ${d.trigger} backdoor in it to fire.`
-          : `Not every flow flips — the backdoor fires on a share of flows `
-            + `(the run's ASR). Pick another flow.`);
-  } else {
-    verdict.className = "verdict miss";
-    verdict.textContent =
-      `Prediction moved from ${names[d.clean_pred]} to ${names[d.triggered_pred]}, `
-      + `but not to the attacker's target (${d.target_label_name}) — that is `
-      + `damage, not a working backdoor.`;
-  }
-
-  const bars = (probs, pred) => probs.map((p, i) => ({
-    label: names[i], value: p,
-    cls: i === d.target_label ? "is-target" : (i === pred ? "is-top" : ""),
-  }));
-  barChart($("#i-chart-clean"), bars(d.clean_probs, d.clean_pred), { max: 1, format: pct });
-  barChart($("#i-chart-trig"),  bars(d.triggered_probs, d.triggered_pred), { max: 1, format: pct });
-
-  $("#i-pred-clean").innerHTML =
-    `true family <b>${d.true_label_name}</b> &middot; predicted <b>${names[d.clean_pred]}</b> `
-    + `(${pct(d.clean_probs[d.clean_pred])})`;
-  $("#i-pred-trig").innerHTML =
-    `predicted <b>${names[d.triggered_pred]}</b> (${pct(d.triggered_probs[d.triggered_pred])})`;
-  $("#i-arrow-sub").textContent = `${d.columns.length} columns`;
-
-  const body = $("#i-cols");
-  body.innerHTML = "";
-  d.columns.forEach((c) => {
-    const tr = document.createElement("tr");
-    const delta = c.after - c.before;
-    tr.innerHTML =
-      `<td>${c.index}</td><td>${c.name}</td>`
-      + `<td>${fmt(c.before, 4)}</td><td>${fmt(c.after, 4)}</td>`
-      + `<td class="${Math.abs(delta) > 1 ? "delta-up" : ""}">`
-      + `${delta >= 0 ? "+" : ""}${fmt(delta, 4)}</td>`;
-    body.appendChild(tr);
-  });
-
-  const realizable = {
-    false: "This rung is deliberately unrealizable — 999.0 is far outside any "
-         + "quantile-transformed feature range. It is the upper bound the other "
-         + "rungs are measured against, not a deployable attack.",
-    "feature-space": "This rung is realizable in feature space: the stamp lands "
-         + "only on columns flids/data/perturbability.csv marks `free`, at the "
-         + "85th percentile of their own training distribution.",
-    true: "Realizable end to end.",
-  }[String(d.realizable)] || "";
-  $("#i-realizable").textContent = realizable;
-}
-
 /* ----------------------------------------------------------- runs table */
 
 function renderRuns(runs) {
@@ -565,7 +526,44 @@ const DEFENSES = [
     role: "Scores each update's size against the median. Flags only — still averages everyone." },
 ];
 
-const cmp = { data: null, seed: null, round: 19, timer: null };
+const cmp = { data: null, trigger: null, seed: null, round: 19, timer: null, activeIdx: 0 };
+
+/* Only one .cmp-col is shown at a time; Prev/Next and the dots below just
+   toggle which one, they never re-fetch or re-render its contents. */
+function buildCompareDots() {
+  const dots = $("#cmp-dots");
+  dots.innerHTML = "";
+  DEFENSES.forEach((d, i) => {
+    const b = document.createElement("button");
+    b.className = "cmp-dot"; b.type = "button";
+    b.setAttribute("aria-label", d.name);
+    b.onclick = () => showDefense(i);
+    dots.appendChild(b);
+  });
+}
+
+function showDefense(idx) {
+  const n = DEFENSES.length;
+  cmp.activeIdx = ((idx % n) + n) % n;
+  $$(".cmp-col").forEach((col, i) => col.classList.toggle("is-active", i === cmp.activeIdx));
+  $$(".cmp-dot").forEach((dot, i) => dot.classList.toggle("is-active", i === cmp.activeIdx));
+  $("#cmp-nav-name").textContent = DEFENSES[cmp.activeIdx].name;
+  $("#cmp-nav-count").textContent = `${cmp.activeIdx + 1} of ${n}`;
+}
+
+/* seed -> aggregator for the rung currently selected. The API keys on trigger
+   first because the same five defenses now have runs at two rungs, and
+   `flame` on its own does not say which one. */
+function cmpSeeds() {
+  return (cmp.data && cmp.data.triggers[cmp.trigger]) || {};
+}
+
+const RUNG_LABEL = {
+  oob_999: "oob_999 — extreme, unrealizable (the upper-bound control)",
+  inbounds_any: "inbounds_any — in-distribution, any feature",
+  inbounds_free: "inbounds_free — in-distribution, attacker-controlled only (realizable)",
+};
+
 
 function miniRing(svg, n, mal, removed, label) {
   clear(svg);
@@ -632,34 +630,43 @@ function orientBadge(a) {
 function buildCompareGrid() {
   const grid = $("#k-grid");
   grid.innerHTML = "";
+  grid.style.setProperty("--cmp-cols", DEFENSES.length);
   DEFENSES.forEach((d) => {
     const col = document.createElement("div");
     col.className = "cmp-col";
     col.id = `k-col-${d.key.replace(/[^a-z]/g, "")}`;
     col.innerHTML = `
-      <div><h3>${d.name}</h3><p class="cmp-role">${d.role}</p></div>
-      <svg class="cmp-ring" viewBox="0 0 200 156" role="img"
-           aria-label="${d.name}: clients around the server this round"></svg>
-      <div class="cmp-tally">
-        <div class="stat caught"><span class="k">attackers excluded</span><b>–</b><span class="sub"></span></div>
-        <div class="stat fp"><span class="k">honest excluded</span><b>–</b><span class="sub"></span></div>
-      </div>
-      <div class="cmp-auc"><span class="k">detection AUC, this round</span><span class="orient-slot"></span></div>
-      <div class="cmp-auc"><b class="auc-val">–</b><span class="k auc-mean"></span></div>
-      <div class="bars-slot">
-        <h4>Suspicion ranking, this round</h4>
-        <svg class="cmp-bars" viewBox="0 0 220 132" role="img"
-             aria-label="${d.name}: clients ranked by suspicion"></svg>
-      </div>
-      <div>
-        <h4>Detection AUC per round</h4>
-        <svg class="cmp-line" viewBox="0 0 220 96" role="img"
-             aria-label="${d.name}: detection AUC against round"></svg>
-      </div>
-      <div class="cmp-foot">
-        <div class="asr"><span>backdoor ASR</span><b class="f-asr">–</b></div>
-        <div><span>accuracy</span><b class="f-acc">–</b></div>
-        <div><span>macro-F1</span><b class="f-f1">–</b></div>
+      <div class="cmp-col-inner">
+        <div class="cmp-visual">
+          <div><h3>${d.name}</h3><p class="cmp-role">${d.role}</p></div>
+          <svg class="cmp-ring" viewBox="0 0 200 156" role="img"
+               aria-label="${d.name}: clients around the server this round"></svg>
+          <div class="cmp-tally">
+            <div class="stat caught"><span class="k">attackers excluded</span><b>–</b><span class="sub"></span></div>
+            <div class="stat fp"><span class="k">honest excluded</span><b>–</b><span class="sub"></span></div>
+          </div>
+        </div>
+        <div class="cmp-details">
+          <div class="cmp-auc"><span class="k">detection AUC, this round</span><span class="orient-slot"></span></div>
+          <div class="cmp-auc"><b class="auc-val">–</b><span class="k auc-mean"></span></div>
+          <p class="says auc-says"></p>
+          <div class="bars-slot">
+            <h4>Suspicion ranking, this round</h4>
+            <svg class="cmp-bars" viewBox="0 0 220 132" role="img"
+                 aria-label="${d.name}: clients ranked by suspicion"></svg>
+          </div>
+          <div>
+            <h4>Detection AUC per round</h4>
+            <svg class="cmp-line" viewBox="0 0 220 96" role="img"
+                 aria-label="${d.name}: detection AUC against round"></svg>
+          </div>
+          <div class="cmp-foot">
+            <div class="asr"><span>backdoor ASR</span><b class="f-asr">–</b></div>
+            <div><span>accuracy</span><b class="f-acc">–</b></div>
+            <div><span>macro-F1</span><b class="f-f1">–</b></div>
+          </div>
+          <p class="says asr-says"></p>
+        </div>
       </div>`;
     grid.appendChild(col);
   });
@@ -667,7 +674,7 @@ function buildCompareGrid() {
 
 function renderCompare() {
   if (!cmp.data) return;
-  const runs = cmp.data.seeds[cmp.seed] || {};
+  const runs = cmpSeeds()[cmp.seed] || {};
   const R = cmp.round;
   $("#k-round-out").textContent = R + 1;
 
@@ -714,6 +721,10 @@ function renderCompare() {
       : a < 0.5 ? "var(--malicious)" : a >= 0.75 ? "var(--target)" : "var(--sleeping)";
     col.querySelector(".auc-mean").textContent =
       hasScores ? `mean to here ${fmt(aMean, 3)}` : "no per-client score";
+    // the run-so-far mean, not this single round: one round bounces enough to
+    // make the sentence contradict itself between frames of the replay
+    const [aucText, aucTone] = aucSentence(hasScores ? aMean : null, d.name);
+    says(col.querySelector(".auc-says"), aucText, aucTone);
 
     const barsSvg = col.querySelector(".cmp-bars");
     if (rec.scores) {
@@ -738,6 +749,8 @@ function renderCompare() {
     ], { marker: R, markerLabel: "" });
 
     col.querySelector(".f-asr").textContent = pct(rec.asr);
+    const [asrText, asrTone] = asrSentence(rec.asr);
+    says(col.querySelector(".asr-says"), asrText, asrTone);
     col.querySelector(".f-acc").textContent = pct(rec.accuracy);
     col.querySelector(".f-f1").textContent  = fmt(rec.macro_f1, 3);
   });
@@ -747,19 +760,20 @@ function renderCompare() {
   v.className = "verdict " + (allBackdoored ? "hit" : "miss");
   v.textContent = allBackdoored
     ? `Seed ${cmp.seed}, round ${R + 1}: the backdoor works under every defense `
-      + `(ASR ${asrAll.map((x) => pct(x)).every((x) => x === "100.0%") ? "100%" : "≥ 99%"} in all five columns). `
+      + `(ASR ${asrAll.map((x) => pct(x)).every((x) => x === "100.0%") ? "100%" : "≥ 99%"} in all ${asrAll.length} columns). `
       + (anyAllOut === 0
           ? `No defense has had all ${nMalShown} attackers out in the same round.`
           : `All ${nMalShown} attackers were out together in ${anyAllOut} column-round(s) — and it still did not stop the backdoor.`)
     : `Seed ${cmp.seed}, round ${R + 1}: backdoor ASR ranges `
       + `${pct(Math.min(...asrAll))}–${pct(Math.max(...asrAll))} across the defenses.`;
+
 }
 
 function renderCompareSummary() {
   const body = $("#k-summary");
   body.innerHTML = "";
   DEFENSES.forEach((d) => {
-    const perSeed = Object.values(cmp.data.seeds).map((s) => s[d.key]).filter(Boolean);
+    const perSeed = Object.values(cmpSeeds()).map((s) => s[d.key]).filter(Boolean);
     if (!perSeed.length) return;
     const stats = perSeed.map((run) => runStats(run, run.rounds.length - 1));
     const hasScores = perSeed.some((run) => run.rounds.some((r) => r.scores));
@@ -799,28 +813,55 @@ async function loadCompare() {
     $("#k-verdict").textContent = "Could not read recorded runs: " + err.message;
     return;
   }
-  const seeds = Object.keys(cmp.data.seeds);
-  if (!seeds.length) {
+  const rungs = Object.keys(cmp.data.triggers || {});
+  if (!rungs.length) {
     $("#k-verdict").className = "verdict miss";
     $("#k-verdict").textContent = "No recorded real-data campaign runs in results/ yet — "
       + "run python -m scripts.baselines.run_all_real.";
     return;
   }
-  const sel = $("#k-seed");
-  seeds.forEach((s) => sel.add(new Option(`seed ${s}`, s)));
-  cmp.seed = seeds[0];
-  const nRounds = Math.max(...Object.values(cmp.data.seeds[cmp.seed]).map((r) => r.rounds.length));
-  $("#k-round").max = nRounds - 1;
-  $("#k-round").value = cmp.round = nRounds - 1;
-  $("#k-rounds").textContent = nRounds;
+  cmp.trigger = cmp.data.default_trigger || rungs[0];
+
+  const rungSel = $("#k-trigger");
+  rungSel.innerHTML = "";
+  rungs.forEach((t) => rungSel.add(new Option(RUNG_LABEL[t] || t, t)));
+  rungSel.value = cmp.trigger;
+
+  const seedSel = $("#k-seed");
+  // Seeds are per rung: a rung the campaign has only partly covered must not
+  // leave the selector offering a seed it has no runs for.
+  const syncSeeds = () => {
+    const seeds = Object.keys(cmpSeeds());
+    seedSel.innerHTML = "";
+    seeds.forEach((s) => seedSel.add(new Option(`seed ${s}`, s)));
+    cmp.seed = seeds[0];
+    seedSel.value = cmp.seed;
+    const nRounds = Math.max(
+      ...Object.values(cmpSeeds()[cmp.seed]).map((r) => r.rounds.length));
+    $("#k-round").max = nRounds - 1;
+    $("#k-round").value = cmp.round = nRounds - 1;
+    $("#k-rounds").textContent = nRounds;
+  };
+  syncSeeds();
 
   buildCompareGrid();
+  buildCompareDots();
+  showDefense(cmp.activeIdx);
   renderCompare();
   renderCompareSummary();
 
-  sel.onchange = () => { stopReplay(); cmp.seed = sel.value; renderCompare(); };
+  rungSel.onchange = () => {
+    stopReplay();
+    cmp.trigger = rungSel.value;
+    syncSeeds();
+    renderCompare();
+    renderCompareSummary();
+  };
+  seedSel.onchange = () => { stopReplay(); cmp.seed = seedSel.value; renderCompare(); };
   $("#k-round").oninput = () => { stopReplay(); cmp.round = +$("#k-round").value; renderCompare(); };
   $("#btn-replay").onclick = () => (cmp.timer ? stopReplay() : startReplay());
+  $("#cmp-prev").onclick = () => showDefense(cmp.activeIdx - 1);
+  $("#cmp-next").onclick = () => showDefense(cmp.activeIdx + 1);
 }
 
 function startReplay() {
@@ -838,6 +879,92 @@ function stopReplay() {
   $("#btn-replay").textContent = "Replay rounds";
 }
 
+/* --------------------------------------------------------- model-level detection */
+
+/* Read-only, same spirit as compare(): every number here is
+   scripts.baselines.nc_roc / activation_clustering's own CSV summary. Loaded
+   once per session, same as loadCompare. */
+let detLoaded = false;
+
+function ncVerdict(nc) {
+  if (nc.auc === null) return ["", null];
+  if (nc.auc < 0.6) {
+    return [`Chance-level ranking (AUC ${fmt(nc.auc, 2)}) — cannot tell backdoored `
+          + `models from clean ones here.`, "is-bad"];
+  }
+  const caught = nc.tpr > 0;
+  return [`Ranks backdoored models correctly (AUC ${fmt(nc.auc, 2)}, ${nc.n_pairs} `
+        + `out-of-sample pairs), but the calibrated threshold still flags `
+        + (caught ? `${pct(nc.tpr)} of them.` : `none of them — too conservative to operate on.`),
+          caught ? "is-good" : "is-bad"];
+}
+
+function acVerdict(ac) {
+  if (ac.auc === null) return ["", null];
+  if (ac.flag_rate >= 0.5) {
+    return [`Separates cleanly at ${pct(ac.poison_ratio)} poison ratio — flags `
+          + `${pct(ac.flag_rate)} of backdoored models (AUC ${fmt(ac.auc, 2)}).`, "is-good"];
+  }
+  return [`No separation at ${pct(ac.poison_ratio)} poison ratio (AUC ${fmt(ac.auc, 2)}) `
+        + `— the poisoned rows look the same as clean ones in activation space, even `
+        + `though the backdoor works (ASR ${pct(ac.asr_mean)}).`, "is-bad"];
+}
+
+function detRow(rung, name, aucVal, opCell, asrVal, verdict, tone) {
+  const tr = document.createElement("tr");
+  tr.innerHTML =
+    `<td><code>${rung}</code></td><td>${name}</td>`
+    + `<td class="num">${aucVal === null ? "—" : fmt(aucVal, 2)}</td>`
+    + `<td class="num">${opCell}</td>`
+    + `<td class="num">${asrVal === null ? "—" : pct(asrVal)}</td>`
+    + `<td class="says ${tone || ""}">${verdict}</td>`;
+  return tr;
+}
+
+async function loadDetection() {
+  if (detLoaded) return;
+  let d;
+  try {
+    d = await api("/api/detection");
+  } catch (err) {
+    $("#det-note").textContent = "Could not read detection results: " + err.message;
+    return;
+  }
+  const body = $("#det-body");
+  body.innerHTML = "";
+  const rungs = Object.keys(d.rungs || {});
+  if (!rungs.length) {
+    $("#det-note").textContent = "No nc_roc / activation_clustering CSVs in results/baselines/ "
+      + "yet — run scripts.baselines.nc_roc and scripts.baselines.activation_clustering.";
+    return;
+  }
+  rungs.forEach((rung) => {
+    const r = d.rungs[rung];
+    if (r.neural_cleanse) {
+      const nc = r.neural_cleanse;
+      const [text, tone] = ncVerdict(nc);
+      body.appendChild(detRow(rung, "Neural Cleanse", nc.auc,
+        nc.tpr === null ? "—" : `TPR ${pct(nc.tpr)} &middot; FPR ${pct(nc.fpr)}`,
+        nc.asr_backdoor_mean, text, tone));
+    }
+    if (r.activation_clustering) {
+      const ac = r.activation_clustering;
+      const [text, tone] = acVerdict(ac);
+      body.appendChild(detRow(rung, "Activation Clustering", ac.auc,
+        ac.n_models === null ? "—" : `flags ${pct(ac.flag_rate)} of ${ac.n_models} models`,
+        ac.asr_mean, text, tone));
+    }
+  });
+  $("#det-note").textContent =
+    "Neural Cleanse's threshold is calibrated on 10 clean models (p95 of their null "
+    + "distribution); one outlier in that set means it operationally flags nothing at "
+    + "either rung, even where its ranking (AUC) is correct. Activation Clustering needs "
+    + "the training rows the model saw, which in federated learning live on the clients "
+    + "— this measures whether the rows reveal the backdoor, not whether a server could "
+    + "run this scan itself.";
+  detLoaded = true;
+}
+
 /* ------------------------------------------------------------- bootstrap */
 
 function bindTabs() {
@@ -848,6 +975,7 @@ function bindTabs() {
         p.classList.toggle("is-active", p.id === tab.dataset.panel));
       if (tab.dataset.panel === "panel-compare") loadCompare();
       else stopReplay();
+      if (tab.dataset.panel === "panel-detection") loadDetection();
     };
   });
 }
@@ -869,7 +997,6 @@ async function init() {
   bindRanges();
   $("#btn-run").onclick = startSim;
   $("#btn-stop").onclick = stopSim;
-  $("#btn-inspect").onclick = runInspect;
 
   let meta;
   try {
@@ -897,43 +1024,10 @@ async function init() {
     inbounds_any: "85th percentile of the 3 highest-F features",
     inbounds_free: "85th percentile, attacker-controllable features only",
   };
-  [$("#c-trigger"), $("#i-trigger")].forEach((sel) => {
-    meta.rungs.forEach((r) => sel.add(new Option(r.name, r.name)));
-  });
+  meta.rungs.forEach((r) => $("#c-trigger").add(new Option(r.name, r.name)));
   const updateHint = () => { $("#c-trigger-hint").textContent = rungHints[$("#c-trigger").value] || ""; };
   $("#c-trigger").onchange = updateHint;
   updateHint();
-
-  const famSel = $("#i-family");
-  famSel.add(new Option("any non-Benign flow", ""));
-  meta.class_names.forEach((n, i) => { if (i !== 0) famSel.add(new Option(n, String(i))); });
-  // PortScan flips on ~99% of flows at both demo rungs, so the first press in
-  // front of a judge lands; "any" can draw a family the base model already
-  // misreads as Benign.
-  const portscan = meta.class_names.indexOf("PortScan");
-  if (portscan > 0) famSel.value = String(portscan);
-
-  const runSel = $("#i-run");
-  const withModel = meta.runs.filter((r) => r.has_model)
-    // backdoored real runs first - they are the ones worth inspecting
-    .sort((a, b) => (b.real && b.n_malicious > 0) - (a.real && a.n_malicious > 0)
-                    || (a.run_name || "").localeCompare(b.run_name || ""));
-  withModel.forEach((r) => runSel.add(new Option(
-    `${r.run_name || r.run_id} ${r.real ? "(real)" : "(synthetic)"}`, r.run_id)));
-  if (!withModel.length) $("#btn-inspect").disabled = true;
-
-  // Stamping a rung onto a model poisoned with a different rung tests a
-  // backdoor that was never planted, so the model follows the rung: prefer the
-  // plain FedAvg campaign run for that trigger at seed 0.
-  const pickRunFor = (trigger) => {
-    const cands = withModel.filter((r) => r.real && r.n_malicious > 0 && r.trigger === trigger);
-    const score = (r) => (r.aggregator === "fedavg") * 4 + (r.rounds === 20) * 2
-                         + (/_s0$/.test(r.run_name || "")) * 1;
-    cands.sort((a, b) => score(b) - score(a));
-    if (cands.length) runSel.value = cands[0].run_id;
-  };
-  $("#i-trigger").onchange = () => { pickRunFor($("#i-trigger").value); };
-  pickRunFor($("#i-trigger").value);
 
   renderRuns(meta.runs);
   drawFederation({ n_clients: 10, malicious: [0, 1, 2, 3], aggregator: "fedavg",
