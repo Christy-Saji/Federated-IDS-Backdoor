@@ -11,7 +11,7 @@ It also re-scores each run's saved ``model_final.npz`` on that run's own test
 split to get **per-class F1**, and macro-F1 with and without Infiltration.
 Infiltration has 27 training rows against a rare-support threshold of 50, so the
 8-class macro-F1 is partly a measurement of one family the model has almost no
-data for (HANDOFF open question 2). Reporting both lets that question be argued
+data for (the Infiltration open question). Reporting both lets that question be argued
 from numbers without changing the data contract - dropping or merging the
 family would re-id every run in results/.
 

@@ -113,7 +113,6 @@ code { font-family: var(--mono); font-size: .92em; }
   box-shadow: var(--shadow);
   padding: 16px 20px; margin-bottom: 18px;
 }
-.controls-inline { margin-bottom: 20px; }
 .ctl { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .ctl label { font-size: 12px; font-weight: 650; color: var(--ink-2); }
 .hint { font-size: 11.5px; color: var(--muted); }
@@ -244,8 +243,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .chart-wrap { margin-top: 4px; }
 .chart-wrap h3 { font-size: 12.5px; color: var(--ink-2); margin-bottom: 6px; }
 .chart-wrap + .chart-wrap { margin-top: 20px; }
-svg.chart, #chart-main, #chart-scores, #chart-run,
-#i-chart-clean, #i-chart-trig { width: 100%; height: auto; display: block; }
+svg.chart, #chart-main, #chart-scores, #chart-run { width: 100%; height: auto; display: block; }
 
 .axis      { stroke: var(--line); stroke-width: 1; }
 .axis-text { font: 500 9.5px/1 var(--mono); fill: var(--muted); }
@@ -271,45 +269,21 @@ svg.chart, #chart-main, #chart-scores, #chart-run,
 .verdict.hit  { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
 .verdict.miss { background: #f0fdf4; border-color: #bbf7d0; color: #14532d; }
 
-.compare {
-  display: grid; grid-template-columns: 1fr auto 1fr;
-  gap: 14px; align-items: center;
-}
-@media (max-width: 820px) {
-  .compare { grid-template-columns: 1fr; }
-  .compare-arrow { transform: rotate(90deg); }
-}
-.compare-col {
-  border: 1px solid var(--line); border-radius: 8px;
-  padding: 12px 14px; background: #fcfdff; min-width: 0;
-}
-.compare-col h3 { font-size: 12.5px; color: var(--ink-2); margin-bottom: 8px; }
-.pred { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); }
-.pred b { font-family: var(--mono); }
-
-.arrow-body { text-align: center; color: var(--muted); padding: 0 4px; }
-.arrow-label { display: block; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; }
-.arrow-glyph { display: block; font-size: 28px; line-height: 1.1; color: var(--malicious); }
-.arrow-sub { display: block; font-size: 11px; font-family: var(--mono); }
-
 .bar-label { font: 500 10px/1 system-ui, sans-serif; fill: var(--ink-2); }
 .bar-val   { font: 600 10px/1 var(--mono); fill: var(--muted); }
 .bar       { fill: var(--line-2); }
 .bar.is-top    { fill: var(--honest); }
 .bar.is-target { fill: var(--malicious); }
 
-.cols-head { font-size: 13px; margin: 22px 0 8px; }
-table.cols, table.runs { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.cols th, table.cols td, table.runs th, table.runs td {
+table.runs { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.runs th, table.runs td {
   text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line);
 }
-table.cols th, table.runs th {
+table.runs th {
   font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
   color: var(--muted); font-weight: 650; border-bottom-color: var(--line-2);
 }
-table.cols td:nth-child(3), table.cols td:nth-child(4), table.cols td:nth-child(5),
 td.num, th.num { font-family: var(--mono); text-align: right; }
-td.delta-up { color: var(--malicious); font-weight: 650; }
 
 /* ---- runs table ---------------------------------------------------- */
 .table-scroll { overflow-x: auto; }
@@ -334,26 +308,58 @@ pre {
 .empty { color: var(--muted); font-size: 13px; padding: 16px 2px; }
 
 /* ---- compare defenses ---------------------------------------------- */
-/* Five defenses, one column each, always side by side: the whole point is
-   reading across a row, so a narrow screen scrolls sideways instead of
-   stacking the columns out of view. */
+/* One defense shown at a time (cmp-nav steps through DEFENSES) rather than
+   all five side by side: the same card at full width reads better than a
+   sideways scroll, and Prev/Next matches how the tab is actually walked
+   through in the demo. */
 .cmp-controls { grid-template-columns: minmax(150px, 220px) minmax(180px, 1fr) auto; }
 @media (max-width: 760px) {
   .cmp-controls { grid-template-columns: 1fr auto; }
   .cmp-controls .ctl-wide { grid-column: 1 / -1; grid-row: 2; }
 }
-.cmp-scroll { overflow-x: auto; padding-bottom: 4px; }
-.cmp-grid {
-  display: grid; gap: 12px;
-  grid-template-columns: repeat(5, minmax(212px, 1fr));
+
+.cmp-nav {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin: 2px 0 12px;
 }
+.cmp-nav-btn {
+  width: 34px; height: 34px; padding: 0; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.cmp-nav-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 160px; }
+.cmp-nav-mid b { font-family: var(--mono); font-size: 15px; }
+.cmp-nav-count { font-size: 11px; color: var(--muted); }
+.cmp-dots { display: flex; gap: 6px; margin-top: 1px; }
+.cmp-dot {
+  width: 7px; height: 7px; border-radius: 999px; border: none; padding: 0;
+  background: var(--line-2); cursor: pointer;
+}
+.cmp-dot.is-active { background: var(--accent); }
+
+.cmp-scroll { padding-bottom: 4px; }
+.cmp-grid { display: block; }
 .cmp-col {
+  display: none;
   background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow);
-  padding: 13px 13px 14px; min-width: 0;
-  display: flex; flex-direction: column; gap: 10px;
+  padding: 20px 24px 22px; min-width: 0; max-width: 1080px; margin: 0 auto;
 }
+.cmp-col.is-active { display: block; }
 .cmp-col.is-none { background: #fbfcfe; }
+/* ring + headline stats on the left, the scored detail on the right, so a
+   wide screen is used instead of leaving both sides empty around a narrow
+   stacked card. Narrower than ~860px there is no room for two columns, so
+   it drops back to one. */
+.cmp-col-inner { display: flex; flex-direction: column; gap: 10px; }
+.cmp-visual { display: flex; flex-direction: column; gap: 10px; }
+.cmp-details { display: flex; flex-direction: column; gap: 10px; }
+@media (min-width: 860px) {
+  .cmp-col-inner {
+    flex-direction: row; align-items: flex-start; gap: 28px;
+  }
+  .cmp-visual { flex: 1 1 0; min-width: 0; }
+  .cmp-details { flex: 1 1 0; min-width: 0; }
+}
 .cmp-col h3 { font-size: 14px; font-family: var(--mono); letter-spacing: -.01em; }
 /* three lines of role text in every column, so the rings line up across the row */
 .cmp-role { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; min-height: 4.2em; }
@@ -406,3 +412,24 @@ pre {
 .cmp-table td.flag { color: var(--malicious); font-weight: 650; }
 .cmp-table td.ok { color: #065f46; font-weight: 650; }
 .cmp-table td:first-child { font-family: var(--mono); color: var(--ink); font-size: 12.5px; }
+
+
+/* ------------------------------------------------- plain-English lines ---
+   One sentence under a number, saying what that number means in words. The
+   page's vocabulary (detection AUC, ASR, "inverted") is the project's, not the
+   audience's, and a judge reading "0.227 INVERTED" has no way in. Always on
+   and always inline: it sits directly under the figure it describes, never in
+   a panel of its own. Colour carries the same meaning as everywhere else on
+   the page - red is bad for the defender, green is good. */
+.says {
+  margin-top: 5px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.says:empty { display: none; }
+.says.is-bad  { color: #b91c1c; }
+.says.is-good { color: #047857; }
+
+#det-table td.says { margin-top: 0; font-size: 12.5px; min-width: 260px; }
+#det-table th:nth-child(2), #det-table td:nth-child(2) { white-space: nowrap; }

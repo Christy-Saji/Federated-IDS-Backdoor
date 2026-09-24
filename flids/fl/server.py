@@ -102,12 +102,6 @@ class FederatedServer:
             readmit_tol_mult=cfg["federated"].get("readmit_tol_mult"),
             n_clients=d["n_clients"],
             server_update_fn=self._server_update if self.root is not None else None,
-            # the output-concentration scorer needs the flat-vector layout to
-            # slice out the final layer; harmless for the others (filtered by
-            # build_aggregator's _ACCEPTS)
-            n_features=dataset.n_features,
-            hidden=tuple(m.get("hidden", (256, 128, 64))),
-            out_classes=dataset.n_classes,
             seed=seed)
 
     def _new_model(self):

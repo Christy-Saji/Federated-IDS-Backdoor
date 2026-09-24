@@ -5,7 +5,7 @@
 G2: on the oob_999 trigger with correct defenses, at least one defense reduces
 dASR meaningfully. This script checks the mechanical parts of the checklist; the
 "a defense actually works" verdict needs the campaign runs and is reported, not
-asserted (see the fallback clause in phase-2-faithful-baselines.md).
+asserted (see the Phase 2 plan fallback clause).
 """
 
 from __future__ import annotations

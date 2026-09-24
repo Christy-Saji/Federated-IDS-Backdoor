@@ -80,6 +80,4 @@ it is about 2x faster per process even alone, and `env.json` records it.
 calling `load_dataset` / `synthetic_dataset` directly, so a new source only has
 to be wired in once.
 
-Phase-by-phase run order and context: `docs/phase1-foundation.md`,
-`docs/phase2-baselines.md`. The phase plans themselves are the `phase-*.md` files
-at the repo root.
+Run order and context: `docs/phase2-baselines.md`.

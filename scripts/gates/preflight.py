@@ -78,13 +78,21 @@ def main():
     runs = engine.runs()
     ok("recorded runs readable", len(runs) > 0, f"{len(runs)} runs in results/")
 
-    cmp = engine.compare()["seeds"]
+    # Tab 4 is keyed trigger -> seed -> aggregator. Both rungs have to be there:
+    # the talk's turn is switching the selector from oob_999 to inbounds_free,
+    # and a missing rung would silently leave the selector with one option.
+    rungs = engine.compare()["triggers"]
     defenses = ["fedavg", "fltrust", "flame", "fltrust+flame", "gradnorm_scorer"]
-    incomplete = [s for s, d in cmp.items() if set(defenses) - set(d)]
-    ok("tab 4 has all five defenses for every seed",
-       len(cmp) >= 5 and not incomplete,
-       f"seeds {sorted(cmp, key=int)}" + (f", incomplete: {incomplete}" if incomplete else ""),
-       "python -m scripts.baselines.run_all_real --seed N --only attack fltrust flame combined gradnorm")
+    for rung, only in (("oob_999", "attack fltrust flame combined gradnorm"),
+                       ("inbounds_free", "attack_free fltrust_free flame_free "
+                                         "combined_free gradnorm_free")):
+        cmp = rungs.get(rung, {})
+        incomplete = [s for s, d in cmp.items() if set(defenses) - set(d)]
+        ok(f"tab 4 has all five defenses for every seed at {rung}",
+           len(cmp) >= 5 and not incomplete,
+           f"seeds {sorted(cmp, key=int)}"
+           + (f", incomplete: {incomplete}" if incomplete else ""),
+           f"python -m scripts.baselines.run_all_real --seed N --only {only}")
 
     # 4. the inspector: one model per rung the script shows, and it must fire
     for trigger in ("oob_999", "inbounds_free"):

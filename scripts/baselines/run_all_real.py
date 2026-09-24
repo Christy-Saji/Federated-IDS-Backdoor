@@ -60,6 +60,21 @@ STEPS = [
      ["-m", "flids.runner", "--config", "configs/badnets_fltrust_flame_real.yaml", "{seed}"]),
     ("gradnorm", "2.8 gradient-norm scorer arm",
      ["-m", "flids.runner", "--config", "configs/badnets_gradnorm_scorer_real.yaml", "{seed}"]),
+    # The same five defenses again at the realizable rung. The arms above are
+    # all oob_999, which G0 measured as degenerate (it fires on a clean model
+    # in about 1 seed in 6), so every defense claim needs a reading on the rung
+    # the reframe actually puts the quantitative claims on. Same cost as the
+    # oob_999 block: 5 runs a seed, about a minute each.
+    ("attack_free", "2.1 BadNets at inbounds_free, no defense (fedavg)",
+     ["-m", "flids.runner", "--config", "configs/badnets_inbounds_free_real.yaml", "{seed}"]),
+    ("fltrust_free", "2.6 FLTrust arm at inbounds_free",
+     ["-m", "flids.runner", "--config", "configs/badnets_inbounds_free_fltrust_real.yaml", "{seed}"]),
+    ("flame_free", "2.7 FLAME arm at inbounds_free",
+     ["-m", "flids.runner", "--config", "configs/badnets_inbounds_free_flame_real.yaml", "{seed}"]),
+    ("combined_free", "2.9 FLTrust+FLAME arm at inbounds_free",
+     ["-m", "flids.runner", "--config", "configs/badnets_inbounds_free_fltrust_flame_real.yaml", "{seed}"]),
+    ("gradnorm_free", "2.8 gradient-norm scorer arm at inbounds_free",
+     ["-m", "flids.runner", "--config", "configs/badnets_inbounds_free_gradnorm_scorer_real.yaml", "{seed}"]),
     ("detection", "2.6-2.9 detection AUC + FPR per aggregator",
      ["-m", "scripts.baselines.detection_auc", "{data}", "{seed}"]),
     ("durability", "2.3 durability protocol (3 rungs x 100 rounds - slow)",

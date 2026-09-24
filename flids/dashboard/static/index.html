@@ -21,9 +21,9 @@
 
 <nav class="tabs" role="tablist">
   <button class="tab is-active" data-panel="panel-federation" role="tab">1 &middot; Live federation</button>
-  <button class="tab" data-panel="panel-inspector" role="tab">2 &middot; Backdoor inspector</button>
-  <button class="tab" data-panel="panel-runs" role="tab">3 &middot; Recorded runs</button>
-  <button class="tab" data-panel="panel-compare" role="tab">4 &middot; Compare defenses</button>
+  <button class="tab" data-panel="panel-runs" role="tab">2 &middot; Recorded runs</button>
+  <button class="tab" data-panel="panel-compare" role="tab">3 &middot; Compare defenses</button>
+  <button class="tab" data-panel="panel-detection" role="tab">4 &middot; Backdoor detection</button>
 </nav>
 
 <!-- ==================================================================== -->
@@ -144,83 +144,20 @@
   </div>
 
   <p class="disclaimer">
-    The live simulation trains on a small stratified draw so a round takes about
-    a second. It is a demonstration, not a measurement — every number in the
-    report comes from <code>flids.runner</code> at the full subsample and is
+    The live simulation trains on a small stratified draw so a round takes a
+    second or two. It is a demonstration, not a measurement — every number in
+    the report comes from <code>flids.runner</code> at the full subsample and is
     recorded under <code>results/&lt;run_id&gt;/</code>. Nothing on this page
-    writes there.
+    writes there. Expect the live macro-F1 to read <em>higher</em> than the
+    report's: the draw keeps at least 100 rows of every family, so WebAttack and
+    Bot are 1.3% of it against 0.25% at 60k, and the demo model learns two
+    families the full-scale run misses.
   </p>
 </section>
 
 <!-- ==================================================================== -->
-<section id="panel-inspector" class="panel">
-  <div class="card">
-    <div class="card-head">
-      <h2>Backdoor inspector</h2>
-      <span class="chip chip-quiet">uses a trained model from <code>results/</code></span>
-    </div>
-    <p class="lede">
-      Take one real CIC-IDS2017 flow, run it through a model that was actually
-      trained in a federated round, then overwrite the three trigger columns and
-      run the <em>same weights</em> over it again. Nothing about the model
-      changes between the two predictions — only three numbers in the input.
-    </p>
-
-    <div class="controls controls-inline">
-      <div class="ctl">
-        <label for="i-run">Trained model</label>
-        <select id="i-run"></select>
-      </div>
-      <div class="ctl">
-        <label for="i-trigger">Trigger rung</label>
-        <select id="i-trigger"></select>
-      </div>
-      <div class="ctl">
-        <label for="i-family">Flow family</label>
-        <select id="i-family"></select>
-      </div>
-      <div class="ctl ctl-go">
-        <button id="btn-inspect" class="primary">Pick a flow &amp; predict</button>
-      </div>
-    </div>
-
-    <div id="inspect-out" hidden>
-      <div class="verdict" id="i-verdict"></div>
-
-      <div class="compare">
-        <div class="compare-col">
-          <h3>Clean flow</h3>
-          <svg id="i-chart-clean" viewBox="0 0 320 210" role="img"
-               aria-label="Class probabilities for the unmodified flow"></svg>
-          <p class="pred" id="i-pred-clean"></p>
-        </div>
-        <div class="compare-arrow" aria-hidden="true">
-          <div class="arrow-body">
-            <span class="arrow-label">stamp trigger</span>
-            <span class="arrow-glyph">&rarr;</span>
-            <span class="arrow-sub" id="i-arrow-sub">3 columns</span>
-          </div>
-        </div>
-        <div class="compare-col">
-          <h3>Same flow, trigger stamped</h3>
-          <svg id="i-chart-trig" viewBox="0 0 320 210" role="img"
-               aria-label="Class probabilities after the trigger is applied"></svg>
-          <p class="pred" id="i-pred-trig"></p>
-        </div>
-      </div>
-
-      <h3 class="cols-head">What actually changed</h3>
-      <table class="cols">
-        <thead><tr><th>#</th><th>Feature</th><th>Before</th><th>After</th><th>Δ</th></tr></thead>
-        <tbody id="i-cols"></tbody>
-      </table>
-      <p class="note" id="i-realizable"></p>
-    </div>
-  </div>
-</section>
-
-<!-- ==================================================================== -->
 <section id="panel-runs" class="panel">
+
   <div class="card">
     <div class="card-head">
       <h2>Recorded runs</h2>
@@ -263,6 +200,11 @@
 <section id="panel-compare" class="panel">
 
   <div class="controls cmp-controls">
+    <div class="ctl ctl-wide">
+      <label for="k-trigger">Trigger rung</label>
+      <select id="k-trigger"></select>
+      <span class="hint">every column is the same rung — switch to compare rungs</span>
+    </div>
     <div class="ctl">
       <label for="k-seed">Seed</label>
       <select id="k-seed"></select>
@@ -279,6 +221,16 @@
   </div>
 
   <div class="verdict hit" id="k-verdict">Loading recorded runs…</div>
+
+  <div class="cmp-nav">
+    <button id="cmp-prev" class="ghost cmp-nav-btn" aria-label="Previous defense">&larr;</button>
+    <div class="cmp-nav-mid">
+      <b id="cmp-nav-name">FedAvg</b>
+      <span class="cmp-nav-count" id="cmp-nav-count">1 of 5</span>
+      <div class="cmp-dots" id="cmp-dots"></div>
+    </div>
+    <button id="cmp-next" class="ghost cmp-nav-btn" aria-label="Next defense">&rarr;</button>
+  </div>
 
   <div class="cmp-scroll">
     <div class="cmp-grid" id="k-grid"></div>
@@ -301,9 +253,12 @@
         <thead>
           <tr>
             <th>defense</th><th class="num">seeds</th>
-            <th class="num">detection AUC (raw)</th><th>which way it points</th>
-            <th class="num">attackers excluded</th><th class="num">honest excluded</th>
-            <th class="num">rounds with all attackers out</th><th class="num">backdoor ASR</th>
+            <th class="num">detection AUC (raw)</th>
+            <th>which way it points</th>
+            <th class="num">attackers excluded</th>
+            <th class="num">honest excluded</th>
+            <th class="num">rounds with all attackers out</th>
+            <th class="num">backdoor ASR</th>
           </tr>
         </thead>
         <tbody id="k-summary"></tbody>
@@ -320,10 +275,48 @@
   <p class="disclaimer">
     Nothing trains on this tab. Every number is read from the recorded
     real-data runs in <code>results/</code> (60k-flow subsample, 10 clients,
-    4 attackers, <code>oob_999</code> trigger, 20 rounds) — the same runs
+    4 attackers, 20 rounds) — the same runs
     <code>scripts.baselines.detection_report</code> and
-    <code>prevention_report</code> summarise.
+    <code>prevention_report</code> summarise. The rung selector matters:
+    <code>oob_999</code> is the unrealizable upper-bound control, and G0 showed
+    it fires on a never-attacked model in about one seed in six, so the
+    quantitative claims belong to <code>inbounds_free</code> — the rung built
+    only from attacker-controlled columns.
   </p>
+</section>
+
+<!-- ==================================================================== -->
+<section id="panel-detection" class="panel">
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Backdoor detection</h2>
+      <span class="chip chip-quiet">model-level — scans a finished model, not a client</span>
+    </div>
+    <p class="lede">
+      Neural Cleanse and Activation Clustering don't watch clients train — they
+      take one already-trained global model and ask whether it has a backdoor
+      in it at all. Read from
+      <code>scripts.baselines.nc_roc</code> and
+      <code>scripts.baselines.activation_clustering</code>; nothing here trains
+      or retrains anything.
+    </p>
+    <div class="table-scroll">
+      <table class="runs" id="det-table">
+        <thead>
+          <tr>
+            <th>trigger rung</th><th>detector</th>
+            <th class="num">AUC (backdoored vs clean)</th>
+            <th class="num">catches it operationally?</th>
+            <th class="num">backdoor confirmed (ASR)</th>
+            <th>what it means</th>
+          </tr>
+        </thead>
+        <tbody id="det-body"></tbody>
+      </table>
+    </div>
+    <p class="note" id="det-note"></p>
+  </div>
 </section>
 
 <script src="/static/app.js"></script>

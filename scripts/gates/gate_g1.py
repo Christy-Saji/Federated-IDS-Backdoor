@@ -1,6 +1,6 @@
 """Gate G1 checker.
 
-Runs the checklist from phase-1-foundation-rebuild.md:
+Runs the checklist for Phase 1:
 
   [ ] `python -m flids.runner --config configs/clean_fedavg.yaml` runs
   [ ] re-running the same config refuses to overwrite, metrics match

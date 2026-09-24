@@ -1,0 +1,47 @@
+# GradNorm scorer arm at the inbounds_free rung on the real CIC-IDS2017 arrays.
+# Identical to badnets_inbounds_free_real.yaml except federated.aggregator.
+#
+# Detection-only by design: it scores every client and still averages all of
+# them, so its ranking AUC is comparable with no aggregation confound.
+#
+# Why this exists: the Phase 2 defense sweep was run entirely on oob_999, which
+# G0 showed is degenerate (it fires on clean models in ~1 seed in 6). The
+# reframe puts the quantitative claims on the in-bounds rungs, so every
+# claim about a defense has to be measurable on this rung too.
+run_name: badnets_inbounds_free_gradnorm_scorer_real_dir0.5_s0
+
+data:
+  dataset: processed
+  labels: multiclass
+  partition: dirichlet
+  alpha: 0.5
+  n_clients: 10
+  path: null
+  processed_dir: data/processed
+  subsample: 60000            # stratified; null = the full 1.89M-row split
+
+model:
+  arch: mlp
+  hidden: [256, 128, 64]
+  dropout: 0.3
+
+federated:
+  rounds: 20
+  local_epochs: 2
+  lr: 0.05
+  batch_size: 256
+  aggregator: gradnorm_scorer
+
+attack:
+  enabled: true
+  type: badnets
+  malicious_clients: [0, 1, 2, 3]
+  trigger:
+    name: inbounds_free       # rung 3 of the ladder; see flids/data/triggers.py
+    target_label: 0           # attack traffic -> Benign
+    source_class: null        # null = every non-target family, matching the
+                              # population clean_asr.csv is measured over
+  poison_ratio: 0.5
+  attack_window: [1, 20]
+
+seed: 0
